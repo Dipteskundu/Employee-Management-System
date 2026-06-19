@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Calendar, Search, Download, ChevronDown, Loader2 } from "lucide-react";
+import { Calendar, Search, Download, ChevronDown, Loader2, LayoutGrid, List } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAttendanceHistory } from "@/hooks/useAttendance";
 import { format, startOfMonth, endOfMonth } from "date-fns";
+import CalendarView from "./CalendarView";
 
 const statusColors: Record<string, string> = {
   present: "gradient-success text-white",
@@ -20,6 +21,7 @@ const statusColors: Record<string, string> = {
 export default function HistoryPage() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
+  const [view, setView] = useState<"table" | "calendar">("table");
 
   const monthStart = format(startOfMonth(new Date()), "yyyy-MM-dd");
   const monthEnd = format(endOfMonth(new Date()), "yyyy-MM-dd");
@@ -142,6 +144,31 @@ export default function HistoryPage() {
         </Card>
       </div>
 
+      {/* View Toggle */}
+      <div className="flex items-center gap-2">
+        <Button
+          variant={view === "table" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setView("table")}
+          className="gap-2"
+        >
+          <List className="h-4 w-4" />
+          Table
+        </Button>
+        <Button
+          variant={view === "calendar" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setView("calendar")}
+          className="gap-2"
+        >
+          <LayoutGrid className="h-4 w-4" />
+          Calendar
+        </Button>
+      </div>
+
+      {view === "calendar" ? (
+        <CalendarView dailyRecords={dailyRecords} />
+      ) : (
       <Card className="shadow-premium">
         <CardHeader>
           <CardTitle>Attendance Records</CardTitle>
@@ -212,6 +239,7 @@ export default function HistoryPage() {
           </div>
         </CardContent>
       </Card>
+      )}
     </div>
   );
 }

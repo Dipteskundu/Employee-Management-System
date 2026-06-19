@@ -1,7 +1,8 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ChartNoAxesCombined, Users, CalendarDays, FileText, TrendingUp, Clock, UserCheck, ArrowRight, Sparkles } from "lucide-react";
+import { ChartNoAxesCombined, Users, CalendarDays, FileText, TrendingUp, Clock, UserCheck, ArrowRight, Sparkles, Bell } from "lucide-react";
+import { useSocketEvents } from "@/hooks/useSocketEvents";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { useTeamStats } from "@/hooks/useReports";
@@ -47,6 +48,8 @@ export default function ManagerDashboard() {
       initials: emp.username.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2),
     };
   });
+
+  const { latestEvent, clearLatestEvent } = useSocketEvents();
 
   const total = stats?.total_employees || employees.length || 0;
   const present = stats?.present_today || 0;
@@ -126,6 +129,27 @@ export default function ManagerDashboard() {
                 </div>
                 <Button variant="ghost" size="sm" onClick={() => router.push("/manager/team")} className="text-xs h-7 lg:h-8">View all</Button>
               </div>
+              {/* Live event banner */}
+              {latestEvent && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="mt-3 flex items-center gap-2 p-2.5 rounded-lg bg-primary/10 border border-primary/20"
+                >
+                  <Bell className="h-3.5 w-3.5 text-primary shrink-0 animate-pulse" />
+                  <p className="text-xs text-primary flex-1">
+                    <span className="font-semibold">{latestEvent.username}</span> clocked{" "}
+                    {latestEvent.type === "IN" ? "in" : "out"} ({latestEvent.status})
+                  </p>
+                  <button
+                    onClick={clearLatestEvent}
+                    className="text-[10px] text-muted-foreground hover:text-foreground shrink-0"
+                  >
+                    Dismiss
+                  </button>
+                </motion.div>
+              )}
             </div>
             <div className="p-1.5 lg:p-2">
               {teamPreview.map((m: any, i: number) => (

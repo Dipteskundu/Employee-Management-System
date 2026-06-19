@@ -86,6 +86,16 @@ export const logout = (): void => {
   window.location.href = "/login";
 };
 
+export const sendOtp = async (): Promise<any> => {
+  const token = getToken();
+  return api.post("/otp/send", {}, token || undefined);
+};
+
+export const verifyOtp = async (otp: string): Promise<any> => {
+  const token = getToken();
+  return api.post("/otp/verify", { otp }, token || undefined);
+};
+
 export const apiService = {
   auth: {
     getMe: () => api.get<any>("/auth/me", getToken() || undefined),
