@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   User as UserIcon, Mail, Phone, Building2, Shield, Save, ArrowLeft,
   Loader2, Calendar, Clock, Fingerprint, CheckCircle2, XCircle,
-  AlertTriangle, LogOut, Hash
+  AlertTriangle, LogOut, Hash, Camera
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -37,6 +37,8 @@ export default function ProfilePageContent() {
   const [username, setUsername] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [department, setDepartment] = useState("");
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const token = getToken();
@@ -51,6 +53,50 @@ export default function ProfilePageContent() {
     setDepartment(storedUser.department);
     setLoading(false);
   }, [router]);
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      setError("Image must be less than 5MB");
+      return;
+    }
+
+    setUploadingAvatar(true);
+    setError("");
+    setSuccess("");
+
+    try {
+      const formData = new FormData();
+      formData.append("image", file);
+
+      const imgbbRes = await fetch(
+        `https://api.imgbb.com/1/upload?key=${process.env.NEXT_PUBLIC_IMGBB_API_KEY}`,
+        { method: "POST", body: formData }
+      );
+
+      const imgbbData = await imgbbRes.json();
+
+      if (!imgbbData.success) {
+        throw new Error(imgbbData.error?.message || "Failed to upload image");
+      }
+
+      const imageUrl = imgbbData.data.url;
+
+      const res = await updateProfile({ profile_picture: imageUrl });
+      const updatedUser = { ...user!, ...res.user };
+      localStorage.setItem("user", JSON.stringify(updatedUser));
+      setUser(updatedUser);
+      setSuccess("Profile picture updated");
+      setTimeout(() => setSuccess(""), 3000);
+    } catch (err: any) {
+      setError(err.message || "Failed to upload profile picture");
+    } finally {
+      setUploadingAvatar(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
 
   const handleSave = async () => {
     setError("");
@@ -130,13 +176,32 @@ export default function ProfilePageContent() {
         <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full blur-3xl translate-y-1/3 -translate-x-1/4" />
 
         <div className="relative z-10 p-6 sm:p-8 flex flex-col sm:flex-row items-center sm:items-end gap-6">
-          <div className="relative">
-            <div className="w-28 h-28 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-white text-4xl font-bold shadow-2xl ring-4 ring-white/30">
-              {initials}
+          <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+            <div className="w-28 h-28 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-white text-4xl font-bold shadow-2xl ring-4 ring-white/30 overflow-hidden">
+              {user.profile_picture ? (
+                <img src={user.profile_picture} alt={user.username} className="w-full h-full object-cover" />
+              ) : (
+                initials
+              )}
+              {uploadingAvatar && (
+                <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-2xl">
+                  <Loader2 className="h-8 w-8 text-white animate-spin" />
+                </div>
+              )}
+            </div>
+            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl flex items-center justify-center">
+              <Camera className="h-8 w-8 text-white" />
             </div>
             <div className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-emerald-400 border-2 border-white flex items-center justify-center">
               <CheckCircle2 className="h-4 w-4 text-white" />
             </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleAvatarUpload}
+            />
           </div>
 
           <div className="text-center sm:text-left sm:pb-1 flex-1">

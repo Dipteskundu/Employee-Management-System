@@ -97,7 +97,7 @@ export default function Header({ user, onMenuToggle, isMobile }: HeaderProps) {
         <DropdownMenu>
           <DropdownMenuTrigger className="h-8 w-8 rounded-full flex items-center justify-center hover:ring-2 hover:ring-primary/20 transition-all outline-none">
             <Avatar className="h-7 w-7 sm:h-8 sm:w-8">
-              <AvatarImage src={user.username} alt={user.username} />
+              <AvatarImage src={user.profile_picture} alt={user.username} />
               <AvatarFallback className="gradient-primary text-white text-[10px] font-bold">
                 {initials}
               </AvatarFallback>
@@ -108,6 +108,7 @@ export default function Header({ user, onMenuToggle, isMobile }: HeaderProps) {
               <DropdownMenuLabel className="font-normal px-3 py-2.5">
                 <div className="flex items-center gap-3">
                   <Avatar className="h-9 w-9">
+                    <AvatarImage src={user.profile_picture} alt={user.username} />
                     <AvatarFallback className="gradient-primary text-white text-xs font-bold">
                       {initials}
                     </AvatarFallback>

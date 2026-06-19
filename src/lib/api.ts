@@ -71,7 +71,7 @@ export const getUser = (): any => {
   return null;
 };
 
-export const updateProfile = async (data: Partial<{ username: string; phone_number: string; department: string }>): Promise<any> => {
+export const updateProfile = async (data: Partial<{ username: string; phone_number: string; department: string; profile_picture: string }>): Promise<any> => {
   const token = getToken();
   return api.put("/auth/profile", data, token || undefined);
 };

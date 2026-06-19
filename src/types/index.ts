@@ -8,6 +8,7 @@ export interface User {
   phone_number: string;
   assigned_office_id: string;
   department: string;
+  profile_picture?: string;
   is_active: boolean;
   created_at: string;
   updated_at: string;
