@@ -13,6 +13,21 @@ export interface User {
   updated_at: string;
 }
 
+export interface Settings {
+  _id?: string;
+  system_name: string;
+  timezone: string;
+  work_hours_start: string;
+  work_hours_end: string;
+  late_threshold_minutes: number;
+  otp_enabled: boolean;
+  gps_enabled: boolean;
+  ip_verification_enabled: boolean;
+  late_arrival_alerts: boolean;
+  absence_reports: boolean;
+  weekly_summary: boolean;
+}
+
 export interface Office {
   _id: string;
   office_name: string;

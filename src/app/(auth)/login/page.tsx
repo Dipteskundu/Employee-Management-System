@@ -16,6 +16,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { loginSchema, type LoginInput } from "@/lib/validations";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+const ADMIN_LOGIN = {
+  identifier: "admin@triplelock.local",
+  password: "Admin@2026!",
+};
 
 export default function LoginPage() {
   const router = useRouter();
@@ -25,6 +29,7 @@ export default function LoginPage() {
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
@@ -80,6 +85,12 @@ export default function LoginPage() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const useAdminLogin = async () => {
+    setValue("identifier", ADMIN_LOGIN.identifier, { shouldValidate: true });
+    setValue("password", ADMIN_LOGIN.password, { shouldValidate: true });
+    await onSubmit(ADMIN_LOGIN);
   };
 
   return (
@@ -162,6 +173,36 @@ export default function LoginPage() {
                 )}
               </Button>
             </form>
+
+            <div className="mt-5 rounded-xl border border-primary/20 bg-primary/5 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Admin quick access</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Click the button below to auto-fill and sign in as admin.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => void useAdminLogin()}
+                  disabled={isLoading}
+                >
+                  Use Admin Login
+                </Button>
+              </div>
+
+              <div className="mt-3 grid gap-2 text-xs font-mono text-muted-foreground">
+                <div className="flex items-center justify-between gap-2 rounded-md bg-background/80 px-3 py-2">
+                  <span>Email</span>
+                  <span className="break-all text-right text-foreground">{ADMIN_LOGIN.identifier}</span>
+                </div>
+                <div className="flex items-center justify-between gap-2 rounded-md bg-background/80 px-3 py-2">
+                  <span>Password</span>
+                  <span className="text-foreground">{ADMIN_LOGIN.password}</span>
+                </div>
+              </div>
+            </div>
 
             <div className="mt-6 text-center text-sm text-muted-foreground">
               Don&apos;t have an account?{" "}

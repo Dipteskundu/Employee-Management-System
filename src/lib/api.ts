@@ -71,6 +71,11 @@ export const getUser = (): any => {
   return null;
 };
 
+export const updateProfile = async (data: Partial<{ username: string; phone_number: string; department: string }>): Promise<any> => {
+  const token = getToken();
+  return api.put("/auth/profile", data, token || undefined);
+};
+
 export const logout = (): void => {
   if (typeof window === "undefined") {
     return;
@@ -79,4 +84,37 @@ export const logout = (): void => {
   localStorage.removeItem("token");
   localStorage.removeItem("user");
   window.location.href = "/login";
+};
+
+export const apiService = {
+  auth: {
+    getMe: () => api.get<any>("/auth/me", getToken() || undefined),
+    updateProfile: (data: any) => api.put("/auth/profile", data, getToken() || undefined),
+  },
+  attendance: {
+    clockIn: (data: any) => api.post<any>("/attendance/clock-in", data, getToken() || undefined),
+    clockOut: (data: any) => api.post<any>("/attendance/clock-out", data, getToken() || undefined),
+    getHistory: (params?: string) => api.get<any>(`/attendance/history${params ? `?${params}` : ""}`, getToken() || undefined),
+    getStats: () => api.get<any>("/attendance/stats", getToken() || undefined),
+  },
+  employees: {
+    list: (params?: string) => api.get<any>(`/employees${params ? `?${params}` : ""}`, getToken() || undefined),
+    create: (data: any) => api.post<any>("/employees", data, getToken() || undefined),
+    update: (id: string, data: any) => api.put<any>(`/employees/${id}`, data, getToken() || undefined),
+    delete: (id: string) => api.delete<any>(`/employees/${id}`, getToken() || undefined),
+  },
+  offices: {
+    list: () => api.get<any>("/offices", getToken() || undefined),
+    create: (data: any) => api.post<any>("/offices", data, getToken() || undefined),
+    update: (id: string, data: any) => api.put<any>(`/offices/${id}`, data, getToken() || undefined),
+    delete: (id: string) => api.delete<any>(`/offices/${id}`, getToken() || undefined),
+  },
+  reports: {
+    generate: (params?: string) => api.get<any>(`/reports/generate${params ? `?${params}` : ""}`, getToken() || undefined),
+    teamStats: () => api.get<any>("/reports/team-stats", getToken() || undefined),
+  },
+  settings: {
+    get: () => api.get<any>("/settings", getToken() || undefined),
+    update: (data: any) => api.put<any>("/settings", data, getToken() || undefined),
+  },
 };

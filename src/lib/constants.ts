@@ -85,6 +85,11 @@ export const API_ENDPOINTS = {
   },
   REPORTS: {
     GENERATE: "/api/reports/generate",
+    TEAM_STATS: "/api/reports/team-stats",
     DOWNLOAD: (id: string) => `/api/reports/${id}`,
+  },
+  SETTINGS: {
+    GET: "/api/settings",
+    UPDATE: "/api/settings",
   },
 };
