@@ -1,7 +1,8 @@
 "use client";
 
-import { Bell, Search, UserIcon, SettingsIcon, LogOut, ChevronRight, Menu } from "lucide-react";
+import { Bell, BellRing, Search, UserIcon, SettingsIcon, LogOut, ChevronRight, Menu, Loader2 } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
+import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -14,8 +15,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
 import { type User } from "@/types";
 import { logout } from "@/lib/api";
+import { useNotifications, useMarkAsRead, useMarkAllAsRead } from "@/hooks/useNotifications";
 
 interface HeaderProps {
   user: User;
@@ -42,6 +51,12 @@ const routeNames: Record<string, string> = {
 export default function Header({ user, onMenuToggle, isMobile }: HeaderProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const { data: notificationsData, isLoading: notifLoading } = useNotifications();
+  const markAsRead = useMarkAsRead();
+  const markAllAsRead = useMarkAllAsRead();
+
+  const notifications = notificationsData?.notifications || [];
+  const unreadCount = notificationsData?.unread_count || 0;
 
   const initials = user.username
     .split(" ")
@@ -89,10 +104,68 @@ export default function Header({ user, onMenuToggle, isMobile }: HeaderProps) {
           </div>
         )}
 
-        <Button variant="ghost" size="icon" className="relative h-8 w-8 text-muted-foreground/60 hover:text-foreground hover:bg-accent/50">
-          <Bell className="h-[17px] w-[17px]" />
-          <span className="absolute top-1.5 right-1.5 w-[7px] h-[7px] bg-destructive rounded-full ring-[2px] ring-card" />
-        </Button>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="ghost" size="icon" className="relative h-8 w-8 text-muted-foreground/60 hover:text-foreground hover:bg-accent/50">
+              {unreadCount > 0 ? <BellRing className="h-[17px] w-[17px]" /> : <Bell className="h-[17px] w-[17px]" />}
+              {unreadCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 flex items-center justify-center bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full px-1 ring-[2px] ring-card">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              )}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-80 p-0 shadow-elevated border-border/60 rounded-xl">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
+              <h4 className="text-sm font-semibold">Notifications</h4>
+              {unreadCount > 0 && (
+                <button
+                  onClick={() => markAllAsRead.mutate()}
+                  className="text-xs text-primary hover:underline"
+                >
+                  Mark all read
+                </button>
+              )}
+            </div>
+            {notifLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground/60" />
+              </div>
+            ) : notifications.length === 0 ? (
+              <div className="text-center py-8 text-xs text-muted-foreground/60">
+                No notifications yet
+              </div>
+            ) : (
+              <ScrollArea className="max-h-80">
+                {notifications.slice(0, 20).map((notif: any) => (
+                  <div
+                    key={notif._id}
+                    onClick={() => !notif.read && markAsRead.mutate(notif._id)}
+                    className={`px-4 py-3 border-b border-border/30 cursor-pointer transition-colors hover:bg-muted/40 ${!notif.read ? "bg-primary/5" : ""}`}
+                  >
+                    <div className="flex items-start gap-2.5">
+                      <div className={`mt-0.5 w-2 h-2 rounded-full shrink-0 ${!notif.read ? "bg-primary" : "bg-transparent"}`} />
+                      <div className="min-w-0 flex-1">
+                        <p className={`text-xs ${!notif.read ? "font-semibold" : "font-medium"} text-foreground truncate`}>
+                          {notif.title}
+                        </p>
+                        <p className="text-xs text-muted-foreground/70 mt-0.5 line-clamp-2">
+                          {notif.message}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground/40 mt-1">
+                          {format(new Date(notif.created_at), "MMM d, h:mm a")}
+                        </p>
+                      </div>
+                      <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 shrink-0 capitalize">
+                        {notif.type.replace("_", " ")}
+                      </Badge>
+                    </div>
+                  </div>
+                ))}
+              </ScrollArea>
+            )}
+          </PopoverContent>
+        </Popover>
 
         <DropdownMenu>
           <DropdownMenuTrigger className="h-8 w-8 rounded-full flex items-center justify-center hover:ring-2 hover:ring-primary/20 transition-all outline-none">

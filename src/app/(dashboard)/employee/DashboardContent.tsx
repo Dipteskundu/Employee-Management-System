@@ -23,7 +23,7 @@ const item = {
 const verificationSteps = [
   { step: 1, title: "Network Check", description: "Verifying office IP address", icon: Wifi },
   { step: 2, title: "Location Check", description: "Verifying GPS coordinates", icon: MapPin },
-  { step: 3, title: "Identity Verification", description: "Enter OTP sent to your phone", icon: CheckCircle2 },
+  { step: 3, title: "Identity Verification", description: "Enter OTP sent to your email", icon: CheckCircle2 },
 ];
 
 export default function EmployeeDashboard() {

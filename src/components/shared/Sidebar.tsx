@@ -15,6 +15,7 @@ import {
   ChevronRight,
   LogOut,
   X,
+  BarChart3,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -50,6 +51,7 @@ const navItemsByRole: Record<UserRole, NavItem[]> = {
     { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
     { label: "Employees", href: "/admin/employees", icon: Users },
     { label: "Offices", href: "/admin/offices", icon: Building2 },
+    { label: "Office Stats", href: "/admin/office-stats", icon: BarChart3 },
     { label: "Reports", href: "/admin/reports", icon: FileText },
     { label: "Settings", href: "/admin/settings", icon: Settings },
   ],

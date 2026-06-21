@@ -5,8 +5,9 @@ import { useRouter } from "next/navigation";
 import { Clock } from "lucide-react";
 import Sidebar from "@/components/shared/Sidebar";
 import Header from "@/components/shared/Header";
+import WrongOfficeModal from "@/components/shared/WrongOfficeModal";
 import { type User } from "@/types";
-import { logout } from "@/lib/api";
+import { logout, apiService } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 export default function DashboardLayout({
@@ -20,6 +21,7 @@ export default function DashboardLayout({
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [wrongOffice, setWrongOffice] = useState<{ assigned: string; detected: string } | null>(null);
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -60,6 +62,38 @@ export default function DashboardLayout({
       setIsReady(true);
     }
   }, [router]);
+
+  useEffect(() => {
+    if (!user) return;
+    const checkIpAccess = async () => {
+      try {
+        const ipResult = await apiService.auth.checkIp();
+        if (!ipResult.allowed) {
+          localStorage.removeItem("token");
+          localStorage.removeItem("user");
+          router.replace("/unauthorized-ip");
+          return;
+        }
+
+        if (user.role !== "admin") {
+          try {
+            const officeResult = await apiService.auth.checkOffice(ipResult.ip);
+            if (officeResult.match === false && officeResult.detected_office) {
+              setWrongOffice({
+                assigned: officeResult.assigned_office || "Unknown",
+                detected: officeResult.detected_office,
+              });
+            }
+          } catch {
+            // check-office endpoint might not exist yet, silently continue
+          }
+        }
+      } catch {
+        // silently fail - don't block the app if IP check fails
+      }
+    };
+    checkIpAccess();
+  }, [user, router]);
 
   if (!isReady || !user) {
     return (
@@ -123,6 +157,13 @@ export default function DashboardLayout({
           {children}
         </main>
       </div>
+
+      {wrongOffice && (
+        <WrongOfficeModal
+          assignedOffice={wrongOffice.assigned}
+          detectedOffice={wrongOffice.detected}
+        />
+      )}
     </div>
   );
 }

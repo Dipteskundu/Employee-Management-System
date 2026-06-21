@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { useAttendanceHistory } from "@/hooks/useAttendance";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import CalendarView from "./CalendarView";
+import { apiService } from "@/lib/api";
 
 const statusColors: Record<string, string> = {
   present: "gradient-success text-white",
@@ -99,7 +100,10 @@ export default function HistoryPage() {
             <p className="text-muted-foreground">Your attendance records</p>
           </div>
         </div>
-        <Button variant="outline" className="gap-2">
+        <Button variant="outline" className="gap-2" onClick={() => {
+          const params = `start_date=${format(startOfMonth(new Date()), "yyyy-MM-dd")}&end_date=${format(endOfMonth(new Date()), "yyyy-MM-dd")}`;
+          apiService.reports.download(params);
+        }}>
           <Download className="h-4 w-4" />
           Export
         </Button>

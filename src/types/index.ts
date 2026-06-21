@@ -5,7 +5,7 @@ export interface User {
   username: string;
   email: string;
   role: UserRole;
-  phone_number: string;
+  phone_number?: string;
   assigned_office_id: string;
   department: string;
   profile_picture?: string;
@@ -32,7 +32,7 @@ export interface Settings {
 export interface Office {
   _id: string;
   office_name: string;
-  static_ip: string;
+  allowed_ips: string[];
   latitude: number;
   longitude: number;
   allowed_radius: number;
@@ -46,6 +46,7 @@ export type AttendanceStatus = "present" | "late" | "absent" | "overtime";
 export interface Attendance {
   _id: string;
   user_id: string;
+  office_id: string;
   timestamp: string;
   type: AttendanceType;
   verified_ip: string;
@@ -73,4 +74,15 @@ export interface DashboardStats {
   late_today: number;
   absent_today: number;
   overtime_today: number;
+}
+
+export interface OfficeStats {
+  office_id: string;
+  office_name: string;
+  total_employees: number;
+  present: number;
+  late: number;
+  absent: number;
+  overtime: number;
+  attendance_rate: number;
 }

@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
-  User as UserIcon, Mail, Phone, Building2, Shield, Save, ArrowLeft,
+  User as UserIcon, Mail, Building2, Shield, Save, ArrowLeft,
   Loader2, Calendar, Clock, Fingerprint, CheckCircle2, XCircle,
   AlertTriangle, LogOut, Hash, Camera
 } from "lucide-react";
@@ -35,7 +35,6 @@ export default function ProfilePageContent() {
   const [success, setSuccess] = useState("");
 
   const [username, setUsername] = useState("");
-  const [phoneNumber, setPhoneNumber] = useState("");
   const [department, setDepartment] = useState("");
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -49,7 +48,6 @@ export default function ProfilePageContent() {
     }
     setUser(storedUser);
     setUsername(storedUser.username);
-    setPhoneNumber(storedUser.phone_number);
     setDepartment(storedUser.department);
     setLoading(false);
   }, [router]);
@@ -102,12 +100,11 @@ export default function ProfilePageContent() {
     setError("");
     setSuccess("");
     if (!username.trim()) { setError("Username is required"); return; }
-    if (!phoneNumber.trim()) { setError("Phone number is required"); return; }
     if (!department.trim()) { setError("Department is required"); return; }
 
     setSaving(true);
     try {
-      const res = await updateProfile({ username, phone_number: phoneNumber, department });
+      const res = await updateProfile({ username, department });
       const updatedUser = { ...user!, ...res.user };
       localStorage.setItem("user", JSON.stringify(updatedUser));
       setUser(updatedUser);
@@ -294,23 +291,6 @@ export default function ProfilePageContent() {
                   <Input value={user.email} disabled className="pl-10 h-11 bg-muted/40" />
                 </div>
                 <p className="text-xs text-muted-foreground/70">Email address cannot be changed</p>
-              </div>
-
-              {/* Phone */}
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium flex items-center gap-2">
-                  <Phone className="h-3.5 w-3.5 text-muted-foreground" />
-                  Phone Number
-                </label>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
-                    className="pl-10 h-11 bg-background"
-                    placeholder="Enter phone number"
-                  />
-                </div>
               </div>
 
               {/* Department */}

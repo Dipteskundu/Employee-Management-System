@@ -17,3 +17,10 @@ export function useGenerateReport(params?: string) {
     enabled: !!params,
   });
 }
+
+export function useOfficeStats(params?: string) {
+  return useQuery({
+    queryKey: ["reports", "office-stats", params],
+    queryFn: () => apiService.reports.officeStats(params),
+  });
+}

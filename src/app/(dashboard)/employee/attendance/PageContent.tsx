@@ -2,14 +2,14 @@
 
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { Clock, MapPin, Wifi, CheckCircle2, AlertCircle, XCircle, Smartphone, Loader2, Timer } from "lucide-react";
+import { Clock, MapPin, Wifi, CheckCircle2, AlertCircle, XCircle, Mail, Loader2, Timer } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useClockIn, useClockOut, useAttendanceHistory } from "@/hooks/useAttendance";
 import { useOffices } from "@/hooks/useOffices";
-import { getUser, getToken, sendOtp, verifyOtp } from "@/lib/api";
+import { getUser, getToken, sendOtp, verifyOtp, apiService } from "@/lib/api";
 import { requestNotificationPermission, showNotification } from "@/lib/notifications";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -31,6 +31,7 @@ export default function AttendancePage() {
   const clockInMutation = useClockIn();
   const clockOutMutation = useClockOut();
 
+  const [currentUser, setCurrentUser] = useState<any>(null);
   const [isClockedIn, setIsClockedIn] = useState(false);
   const [hadClockOut, setHadClockOut] = useState(false);
   const [otp, setOtp] = useState("");
@@ -38,17 +39,19 @@ export default function AttendancePage() {
   const [otpSending, setOtpSending] = useState(false);
   const [otpCountdown, setOtpCountdown] = useState(0);
   const [otpError, setOtpError] = useState("");
+  const [otpDeliveryInfo, setOtpDeliveryInfo] = useState("");
   const otpTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [steps, setSteps] = useState<VerificationStep[]>([
     { step: 1, title: "Network Check", description: "Verifying office IP address", icon: Wifi, status: "active" },
     { step: 2, title: "Location Check", description: "Verifying GPS coordinates", icon: MapPin, status: "pending" },
-    { step: 3, title: "Identity Verification", description: "Enter OTP sent to your phone", icon: Smartphone, status: "pending" },
+    { step: 3, title: "Identity Verification", description: "Enter OTP sent to your email", icon: Mail, status: "pending" },
   ]);
 
   const [userOffice, setUserOffice] = useState<any>(null);
   const [userIp, setUserIp] = useState("");
   const [userGps, setUserGps] = useState<{ latitude: number; longitude: number } | null>(null);
   const [clocking, setClocking] = useState(false);
+  const [wrongOfficeError, setWrongOfficeError] = useState<{ assigned: string; detected: string } | null>(null);
 
   useEffect(() => {
     if (historyData?.attendance) {
@@ -62,6 +65,7 @@ export default function AttendancePage() {
 
   useEffect(() => {
     const user = getUser();
+    setCurrentUser(user);
     if (officesData?.offices && user?.assigned_office_id) {
       const office = officesData.offices.find((o: any) => o._id === user.assigned_office_id);
       setUserOffice(office);
@@ -78,6 +82,26 @@ export default function AttendancePage() {
       .then((d) => setUserIp(d.ip))
       .catch(() => setUserIp("unknown"));
   }, []);
+
+  useEffect(() => {
+    if (!userIp || !currentUser || currentUser.role === "admin") return;
+    const checkWrongOffice = async () => {
+      try {
+        const result = await apiService.auth.checkOffice(userIp);
+        if (result.match === false && result.detected_office) {
+          setWrongOfficeError({
+            assigned: result.assigned_office || "Unknown",
+            detected: result.detected_office,
+          });
+        } else {
+          setWrongOfficeError(null);
+        }
+      } catch {
+        // endpoint might not exist yet
+      }
+    };
+    checkWrongOffice();
+  }, [userIp, currentUser]);
 
   useEffect(() => {
     if (navigator.geolocation) {
@@ -102,10 +126,16 @@ export default function AttendancePage() {
     if (otpSending || otpCountdown > 0) return;
     setOtpSending(true);
     setOtpError("");
+    setOtpDeliveryInfo("");
     try {
-      await sendOtp();
+      const result = await sendOtp();
       setOtpCountdown(300);
-      toast.success("OTP sent to your phone");
+      setOtpDeliveryInfo(result.message || "");
+      if (result.message?.includes("[DEV]")) {
+        toast.warning("OTP only logged to server console (check Brevo API key)");
+      } else {
+        toast.success(result.message || "OTP sent to your email");
+      }
     } catch (err: any) {
       setOtpError(err.message || "Failed to send OTP");
       toast.error(err.message || "Failed to send OTP");
@@ -281,6 +311,26 @@ export default function AttendancePage() {
         </motion.div>
       </div>
 
+      {wrongOfficeError && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-6 text-center"
+        >
+          <AlertCircle className="h-10 w-10 text-amber-500 mx-auto mb-3" />
+          <h3 className="text-lg font-semibold text-amber-700 mb-2">Wrong Office Detected</h3>
+          <p className="text-sm text-muted-foreground mb-1">
+            You are registered under: <span className="font-semibold">{wrongOfficeError.assigned}</span>
+          </p>
+          <p className="text-sm text-muted-foreground mb-3">
+            You are currently accessing from: <span className="font-semibold text-amber-600">{wrongOfficeError.detected}</span>
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Please connect from your assigned office network to mark attendance.
+          </p>
+        </motion.div>
+      )}
+
       <div className="grid gap-4 sm:gap-6 md:grid-cols-2">
         <motion.div
           initial={{ opacity: 0, x: -20 }}
@@ -311,7 +361,9 @@ export default function AttendancePage() {
                       <h3 className={`text-xs sm:text-sm font-medium ${config.color}`}>
                         Step {step.step}: {step.title}
                       </h3>
-                      <p className="text-[10px] sm:text-sm text-muted-foreground">{step.description}</p>
+                      <p className="text-[10px] sm:text-sm text-muted-foreground">
+                        {step.step === 3 && currentUser?.email ? `Enter OTP sent to ${currentUser.email}` : step.description}
+                      </p>
                     </div>
                     <Icon className={`h-4 w-4 sm:h-5 sm:w-5 ${config.color} shrink-0`} />
                   </motion.div>
@@ -351,6 +403,9 @@ export default function AttendancePage() {
                           <Loader2 className="h-3 w-3 animate-spin" /> Sending OTP...
                         </p>
                       )}
+                      {otpDeliveryInfo && (
+                        <p className="text-xs text-muted-foreground">{otpDeliveryInfo}</p>
+                      )}
                       {otpCountdown > 0 && !otpSending && (
                         <p className="text-xs text-muted-foreground flex items-center gap-1">
                           <Timer className="h-3 w-3" /> OTP expires in {Math.floor(otpCountdown / 60)}:{(otpCountdown % 60).toString().padStart(2, "0")}
@@ -371,7 +426,7 @@ export default function AttendancePage() {
                   onClick={otpVerified ? handleClockAction : runVerification}
                   className="w-full gradient-primary text-white"
                   size="lg"
-                  disabled={clocking || otpSending}
+                  disabled={clocking || otpSending || !!wrongOfficeError}
                 >
                   {clocking ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Processing...</> : otpVerified ? "Clock In" : "Start Verification"}
                 </Button>

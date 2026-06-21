@@ -1,12 +1,17 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ShieldCheck, Users, Building2, FileText, TrendingUp, Activity, ArrowRight, Sparkles } from "lucide-react";
+import { ShieldCheck, Users, Building2, FileText, TrendingUp, Activity, ArrowRight, Sparkles, Edit2, Trash2, X, Loader2, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { useRouter } from "next/navigation";
-import { useTeamStats } from "@/hooks/useReports";
-import { useEmployees } from "@/hooks/useEmployees";
+import { useTeamStats, useOfficeStats } from "@/hooks/useReports";
+import { useEmployees, useUpdateEmployee, useDeleteEmployee } from "@/hooks/useEmployees";
 import { useOffices } from "@/hooks/useOffices";
+import { DEPARTMENTS } from "@/lib/constants";
+import { toast } from "sonner";
+import { useState } from "react";
 
 const container = {
   hidden: { opacity: 0 },
@@ -30,10 +35,48 @@ export default function AdminDashboard() {
   const { data: teamStatsData } = useTeamStats();
   const { data: employeesData } = useEmployees();
   const { data: officesData } = useOffices();
+  const { data: officeStatsData } = useOfficeStats();
+  const updateMutation = useUpdateEmployee();
+  const deleteMutation = useDeleteEmployee();
+
+  const [editingEmployee, setEditingEmployee] = useState<any | null>(null);
+  const [editForm, setEditForm] = useState({ username: "", email: "", department: "", role: "" });
+
+  const openEdit = (emp: any) => {
+    setEditForm({
+      username: emp.username || "",
+      email: emp.email || "",
+      department: emp.department || "",
+      role: emp.role || "employee",
+    });
+    setEditingEmployee(emp);
+  };
+
+  const handleEditSave = async () => {
+    if (!editingEmployee) return;
+    try {
+      await updateMutation.mutateAsync({ id: editingEmployee._id, data: editForm });
+      toast.success("Employee updated");
+      setEditingEmployee(null);
+    } catch (err: any) {
+      toast.error(err.message || "Update failed");
+    }
+  };
+
+  const handleDelete = async (id: string, name: string) => {
+    if (!window.confirm(`Delete "${name}"? This cannot be undone.`)) return;
+    try {
+      await deleteMutation.mutateAsync(id);
+      toast.success("Employee deleted");
+    } catch (err: any) {
+      toast.error(err.message || "Delete failed");
+    }
+  };
 
   const stats = teamStatsData?.stats;
   const employees: EmployeeLike[] = employeesData?.employees || [];
   const offices = officesData?.offices || [];
+  const officeStats = officeStatsData?.offices || [];
 
   const totalEmployees = employees.length;
   const activeEmployees = employees.filter((employee) => employee.is_active).length;
@@ -92,6 +135,7 @@ export default function AdminDashboard() {
       .toUpperCase()
       .slice(0, 2),
     active: !!employee.is_active,
+    _employee: employee,
   }));
 
   return (
@@ -189,18 +233,56 @@ export default function AdminDashboard() {
         })}
       </motion.section>
 
+      {officeStats.length > 0 && (
+        <motion.section variants={item}>
+          <div className="overflow-hidden rounded-2xl border border-border/40 bg-card shadow-card">
+            <div className="border-b border-border/30 px-5 py-4 sm:px-6">
+              <h3 className="text-sm font-semibold sm:text-base">Office Attendance Today</h3>
+            </div>
+            <div className="p-2 sm:p-3">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {officeStats.map((stat: any) => (
+                  <div key={stat.office_id} className="p-3 rounded-xl border border-border/40 bg-background/60">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-semibold">{stat.office_name}</span>
+                      <Badge className={stat.attendance_rate >= 80 ? "gradient-success text-white" : "bg-amber-100 text-amber-700"}>
+                        {stat.attendance_rate}%
+                      </Badge>
+                    </div>
+                    <div className="flex gap-3 text-xs text-muted-foreground">
+                      <span>{stat.present}/{stat.total_employees} present</span>
+                      <span>{stat.late} late</span>
+                      <span>{stat.absent} absent</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </motion.section>
+      )}
+
       <div className="grid gap-4 xl:grid-cols-[1.35fr_0.9fr] lg:gap-6">
         <motion.section variants={item}>
           <div className="overflow-hidden rounded-2xl border border-border/40 bg-card shadow-card">
             <div className="border-b border-border/30 px-5 py-4 sm:px-6">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <h3 className="text-sm font-semibold sm:text-base">Registered Users</h3>
-                  <p className="mt-0.5 text-xs text-muted-foreground/70 sm:text-sm">
-                    Latest registered employees
-                  </p>
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-semibold sm:text-base">Registered Users</h3>
+                    <p className="mt-0.5 text-xs text-muted-foreground/70 sm:text-sm">
+                      Click edit or delete to manage employees directly
+                    </p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs gap-1 text-primary"
+                    onClick={() => router.push("/admin/employees")}
+                  >
+                    <Users className="h-3.5 w-3.5" />
+                    View All
+                  </Button>
                 </div>
-              </div>
             </div>
 
             <div className="p-2 sm:p-3">
@@ -209,7 +291,7 @@ export default function AdminDashboard() {
                   {activities.map((activity) => (
                     <div
                       key={activity.id}
-                      className="flex flex-col gap-3 rounded-xl px-3 py-3 transition-colors hover:bg-muted/30 sm:grid sm:grid-cols-[auto,1fr,auto] sm:items-center"
+                      className="flex flex-col gap-2 rounded-xl px-3 py-2.5 transition-colors hover:bg-muted/30 sm:grid sm:grid-cols-[auto,1fr,auto,auto] sm:items-center sm:gap-3"
                     >
                       <div className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold text-white shadow-sm ${
                         activity.active ? "bg-gradient-to-br from-emerald-500 to-teal-600" : "bg-gradient-to-br from-slate-400 to-slate-500"
@@ -231,8 +313,19 @@ export default function AdminDashboard() {
                         </p>
                       </div>
 
-                      <div className="sm:text-right">
-                        <span className="text-[11px] text-muted-foreground/60">{activity.time}</span>
+                      <div className="flex items-center gap-1 sm:justify-end">
+                        <button
+                          onClick={() => openEdit(activity._employee)}
+                          className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground/50 transition-colors hover:bg-primary/10 hover:text-primary"
+                        >
+                          <Edit2 className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(activity.id, activity.user)}
+                          className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground/50 transition-colors hover:bg-destructive/10 hover:text-destructive"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
                       </div>
                     </div>
                   ))}
@@ -241,6 +334,73 @@ export default function AdminDashboard() {
                 <p className="px-3 py-8 text-center text-sm text-muted-foreground">
                   No users registered yet
                 </p>
+              )}
+
+              {editingEmployee && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mt-3 rounded-xl border border-border/50 bg-background p-4"
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-sm font-semibold">Edit Employee</h4>
+                    <button onClick={() => setEditingEmployee(null)} className="text-muted-foreground/50 hover:text-foreground">
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className="text-xs font-medium mb-1 block">Username</label>
+                      <Input
+                        value={editForm.username}
+                        onChange={(e) => setEditForm({ ...editForm, username: e.target.value })}
+                        className="h-9 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium mb-1 block">Email</label>
+                      <Input
+                        value={editForm.email}
+                        onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                        className="h-9 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium mb-1 block">Department</label>
+                      <select
+                        value={editForm.department}
+                        onChange={(e) => setEditForm({ ...editForm, department: e.target.value })}
+                        className="flex h-9 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                      >
+                        <option value="">Select...</option>
+                        {DEPARTMENTS.map((d: string) => <option key={d} value={d}>{d}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium mb-1 block">Role</label>
+                      <select
+                        value={editForm.role}
+                        onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
+                        className="flex h-9 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                      >
+                        <option value="employee">Employee</option>
+                        <option value="manager">Manager</option>
+                        <option value="admin">Admin</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="flex gap-2 mt-3">
+                    <Button variant="outline" size="sm" onClick={() => setEditingEmployee(null)}>Cancel</Button>
+                    <Button
+                      size="sm"
+                      className="gradient-primary text-white"
+                      onClick={handleEditSave}
+                      disabled={updateMutation.isPending}
+                    >
+                      {updateMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Save"}
+                    </Button>
+                  </div>
+                </motion.div>
               )}
             </div>
           </div>

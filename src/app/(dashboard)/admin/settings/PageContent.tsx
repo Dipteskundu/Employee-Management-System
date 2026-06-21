@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Settings, Shield, Bell, Globe, Lock, Smartphone, Clock, Save, Wifi, Loader2 } from "lucide-react";
+import { Settings, Shield, Bell, Globe, Lock, Clock, Save, Wifi, Loader2, Mail, Plus, X } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,7 +26,16 @@ export default function AdminSettingsPage() {
     late_arrival_alerts: true,
     absence_reports: true,
     weekly_summary: true,
+    email_notifications_enabled: false,
+    smtp_host: "",
+    smtp_port: 587,
+    smtp_user: "",
+    smtp_pass: "",
+    smtp_from: "",
+    notification_emails: [] as string[],
   });
+
+  const [emailInput, setEmailInput] = useState("");
 
   useEffect(() => {
     if (data?.settings) {
@@ -43,11 +52,18 @@ export default function AdminSettingsPage() {
         late_arrival_alerts: s.late_arrival_alerts ?? true,
         absence_reports: s.absence_reports ?? true,
         weekly_summary: s.weekly_summary ?? true,
+        email_notifications_enabled: s.email_notifications_enabled ?? false,
+        smtp_host: s.smtp_host || "",
+        smtp_port: s.smtp_port || 587,
+        smtp_user: s.smtp_user || "",
+        smtp_pass: s.smtp_pass || "",
+        smtp_from: s.smtp_from || "",
+        notification_emails: s.notification_emails || [],
       });
     }
   }, [data]);
 
-  const updateSetting = (key: string, value: string | boolean | number) => {
+  const updateSetting = (key: string, value: string | boolean | number | string[]) => {
     setSettings((prev) => ({ ...prev, [key]: value }));
   };
 
@@ -177,10 +193,10 @@ export default function AdminSettingsPage() {
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <Smartphone className="h-5 w-5 text-muted-foreground" />
+                <Mail className="h-5 w-5 text-muted-foreground" />
                 <div>
                   <p className="font-medium">OTP Verification</p>
-                  <p className="text-sm text-muted-foreground">Send one-time passwords via SMS</p>
+                  <p className="text-sm text-muted-foreground">Send one-time passwords via email</p>
                 </div>
               </div>
               <label className="relative inline-flex items-center cursor-pointer">
@@ -298,6 +314,131 @@ export default function AdminSettingsPage() {
                 <div className="w-11 h-6 bg-muted peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary" />
               </label>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-premium md:col-span-2">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Mail className="h-5 w-5 text-primary" />
+              <CardTitle>Email Notifications</CardTitle>
+            </div>
+            <CardDescription>Configure SMTP and notification email recipients</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">Enable Email Notifications</p>
+                <p className="text-sm text-muted-foreground">Send alerts via email in addition to in-app notifications</p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={settings.email_notifications_enabled}
+                  onChange={(e) => updateSetting("email_notifications_enabled", e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-muted peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary" />
+              </label>
+            </div>
+
+            {settings.email_notifications_enabled && (
+              <>
+                <Separator />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium mb-1 block">SMTP Host</label>
+                    <Input
+                      placeholder="smtp.gmail.com"
+                      value={settings.smtp_host}
+                      onChange={(e) => updateSetting("smtp_host", e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium mb-1 block">SMTP Port</label>
+                    <Input
+                      type="number"
+                      value={settings.smtp_port}
+                      onChange={(e) => updateSetting("smtp_port", Number(e.target.value))}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium mb-1 block">SMTP User</label>
+                    <Input
+                      placeholder="user@gmail.com"
+                      value={settings.smtp_user}
+                      onChange={(e) => updateSetting("smtp_user", e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium mb-1 block">SMTP Password</label>
+                    <Input
+                      type="password"
+                      placeholder="App password"
+                      value={settings.smtp_pass}
+                      onChange={(e) => updateSetting("smtp_pass", e.target.value)}
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="text-sm font-medium mb-1 block">From Address</label>
+                    <Input
+                      placeholder="noreply@company.com"
+                      value={settings.smtp_from}
+                      onChange={(e) => updateSetting("smtp_from", e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <Separator />
+
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Notification Recipients</label>
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {settings.notification_emails.map((email, i) => (
+                      <span key={i} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">
+                        {email}
+                        <button
+                          onClick={() => {
+                            const updated = settings.notification_emails.filter((_: string, idx: number) => idx !== i);
+                            updateSetting("notification_emails", updated);
+                          }}
+                          className="hover:text-destructive"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="manager@company.com"
+                      value={emailInput}
+                      onChange={(e) => setEmailInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && emailInput.trim()) {
+                          e.preventDefault();
+                          updateSetting("notification_emails", [...settings.notification_emails, emailInput.trim()]);
+                          setEmailInput("");
+                        }
+                      }}
+                    />
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => {
+                        if (emailInput.trim()) {
+                          updateSetting("notification_emails", [...settings.notification_emails, emailInput.trim()]);
+                          setEmailInput("");
+                        }
+                      }}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">Press Enter or click + to add an email</p>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>

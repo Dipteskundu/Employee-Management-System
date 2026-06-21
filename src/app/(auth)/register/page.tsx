@@ -6,7 +6,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Eye, EyeOff, Loader2, Lock, Mail, Phone, User } from "lucide-react";
+import { Eye, EyeOff, Loader2, Lock, Mail, User } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -41,7 +41,6 @@ export default function RegisterPage() {
         ...data,
         username: data.username.trim(),
         email: data.email.trim().toLowerCase(),
-        phone_number: data.phone_number.trim(),
         department: data.department.trim(),
       };
 
@@ -159,23 +158,6 @@ export default function RegisterPage() {
                 </div>
                 {errors.email && (
                   <p className="text-sm text-destructive">{errors.email.message}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="phone_number">Phone Number</Label>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input
-                    id="phone_number"
-                    type="tel"
-                    placeholder="+1 (555) 000-0000"
-                    className="pl-10"
-                    {...register("phone_number")}
-                  />
-                </div>
-                {errors.phone_number && (
-                  <p className="text-sm text-destructive">{errors.phone_number.message}</p>
                 )}
               </div>
 

@@ -6,9 +6,12 @@ import { FileText, Download, TrendingUp, TrendingDown, BarChart3, PieChart, Cale
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useGenerateReport, useTeamStats } from "@/hooks/useReports";
+import { useGenerateReport, useTeamStats, useOfficeStats } from "@/hooks/useReports";
 import { useEmployees } from "@/hooks/useEmployees";
+import { useOffices } from "@/hooks/useOffices";
 import { format, startOfMonth, endOfMonth } from "date-fns";
+import DepartmentChart from "@/components/shared/DepartmentChart";
+import { apiService } from "@/lib/api";
 
 const statusBadge: Record<string, string> = {
   ready: "gradient-success text-white",
@@ -28,13 +31,18 @@ export default function AdminReportsPage() {
   const { data: employeesData } = useEmployees();
   const { data: teamStatsData } = useTeamStats();
 
-  const monthStart = format(startOfMonth(new Date()), "yyyy-MM-dd");
-  const monthEnd = format(endOfMonth(new Date()), "yyyy-MM-dd");
-  const { data: reportData, isLoading: reportLoading } = useGenerateReport(`start_date=${monthStart}&end_date=${monthEnd}`);
+  const [startDate, setStartDate] = useState(format(startOfMonth(new Date()), "yyyy-MM-dd"));
+  const [endDate, setEndDate] = useState(format(endOfMonth(new Date()), "yyyy-MM-dd"));
+  const [selectedOffice, setSelectedOffice] = useState("");
+  const { data: reportData, isLoading: reportLoading } = useGenerateReport(`start_date=${startDate}&end_date=${endDate}${selectedOffice ? `&office_id=${selectedOffice}` : ""}`);
+  const { data: officesData } = useOffices();
+  const offices = officesData?.offices || [];
 
   const employees = employeesData?.employees || [];
   const stats = teamStatsData?.stats;
   const report = reportData?.summary;
+  const { data: officeStatsData } = useOfficeStats(`start_date=${startDate}&end_date=${endDate}`);
+  const officeStats = officeStatsData?.offices || [];
 
   const totalEmployees = employees.length;
   const attendanceRate = stats?.present_today && stats?.total_employees
@@ -48,7 +56,7 @@ export default function AdminReportsPage() {
     { title: "Overtime Analysis", period: format(new Date(), "MMMM yyyy"), records: report?.overtime || 0, status: "ready" as const, type: "overtime" },
   ];
 
-  const departments = [...new Set(employees.map((e: any) => e.department))];
+  const departments = [...new Set(employees.map((e: any) => e.department))] as string[];
 
   return (
     <div className="space-y-6">
@@ -63,6 +71,33 @@ export default function AdminReportsPage() {
           <div>
             <h1 className="text-3xl font-bold">Reports & Analytics</h1>
             <p className="text-muted-foreground">System-wide reports and data analysis</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 text-sm">
+            <select
+              value={selectedOffice}
+              onChange={(e) => setSelectedOffice(e.target.value)}
+              className="flex h-9 rounded-lg border border-input bg-background px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="">All Offices</option>
+              {offices.map((o: any) => (
+                <option key={o._id} value={o._id}>{o.office_name}</option>
+              ))}
+            </select>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="flex h-9 rounded-lg border border-input bg-background px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+            <span className="text-muted-foreground">to</span>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="flex h-9 rounded-lg border border-input bg-background px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            />
           </div>
         </div>
       </motion.div>
@@ -118,30 +153,8 @@ export default function AdminReportsPage() {
             <CardTitle>Attendance by Department</CardTitle>
             <CardDescription>Employee distribution by department</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {departments.length > 0 ? departments.map((dept: any, i: number) => {
-              const count = employees.filter((e: any) => e.department === dept).length;
-              const percent = totalEmployees > 0 ? Math.round((count / totalEmployees) * 100) : 0;
-              const colors = ["bg-emerald-500", "bg-blue-500", "bg-amber-500", "bg-purple-500", "bg-cyan-500", "bg-rose-500"];
-              return (
-                <div key={dept}>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span>{dept}</span>
-                    <span className="font-medium">{percent}% ({count})</span>
-                  </div>
-                  <div className="h-2.5 bg-muted rounded-full overflow-hidden">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${percent}%` }}
-                      transition={{ duration: 1, delay: 0.2 + i * 0.1 }}
-                      className={`h-full ${colors[i % colors.length]} rounded-full`}
-                    />
-                  </div>
-                </div>
-              );
-            }) : (
-              <p className="text-center text-muted-foreground py-6">No department data available</p>
-            )}
+          <CardContent>
+            <DepartmentChart departments={departments} employees={employees} />
           </CardContent>
         </Card>
 
@@ -175,7 +188,10 @@ export default function AdminReportsPage() {
                       {report.status}
                     </Badge>
                     {report.status === "ready" && (
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
+                        const params = `start_date=${startDate}&end_date=${endDate}`;
+                        apiService.reports.download(params);
+                      }}>
                         <Download className="h-4 w-4" />
                       </Button>
                     )}
@@ -186,6 +202,38 @@ export default function AdminReportsPage() {
           </CardContent>
         </Card>
       </div>
+
+      {officeStats.length > 0 && (
+        <Card className="shadow-premium">
+          <CardHeader>
+            <CardTitle>Office Attendance Overview</CardTitle>
+            <CardDescription>Attendance statistics by office</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {officeStats.map((stat: any) => (
+                <div key={stat.office_id} className="p-4 rounded-lg border border-border/40 bg-background/60 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-semibold">{stat.office_name}</h4>
+                    <Badge className={stat.attendance_rate >= 80 ? "gradient-success text-white" : stat.attendance_rate >= 50 ? "bg-amber-100 text-amber-700" : "bg-destructive/10 text-destructive"}>
+                      {stat.attendance_rate}%
+                    </Badge>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div><span className="text-muted-foreground">Employees:</span> <span className="font-medium">{stat.total_employees}</span></div>
+                    <div><span className="text-muted-foreground">Present:</span> <span className="font-medium text-emerald-600">{stat.present}</span></div>
+                    <div><span className="text-muted-foreground">Late:</span> <span className="font-medium text-amber-600">{stat.late}</span></div>
+                    <div><span className="text-muted-foreground">Absent:</span> <span className="font-medium text-destructive">{stat.absent}</span></div>
+                  </div>
+                  <div className="w-full h-2 rounded-full bg-muted overflow-hidden">
+                    <div className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all" style={{ width: `${stat.attendance_rate}%` }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Building2, Plus, MapPin, Wifi, Edit2, Trash2, CircleDot, Loader2, X } from "lucide-react";
+import { Building2, Plus, MapPin, Wifi, Edit2, Trash2, CircleDot, Loader2, X, PlusCircle, Users } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { useOffices, useCreateOffice, useUpdateOffice, useDeleteOffice } from "@/hooks/useOffices";
 import { useEmployees } from "@/hooks/useEmployees";
+import OfficeMembers from "@/components/admin/OfficeMembers";
 import { toast } from "sonner";
 
 export default function AdminOfficesPage() {
@@ -21,24 +22,39 @@ export default function AdminOfficesPage() {
 
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState({ office_name: "", static_ip: "", latitude: "", longitude: "", allowed_radius: 50 });
+  const [form, setForm] = useState({ office_name: "", allowed_ips: [] as string[], ipInput: "", latitude: "", longitude: "", allowed_radius: 50 });
+  const [selectedOffice, setSelectedOffice] = useState<{ id: string; name: string } | null>(null);
 
   const offices = data?.offices || [];
   const employees = employeesData?.employees || [];
 
+  const addIp = () => {
+    const ip = form.ipInput.trim();
+    if (!ip) return;
+    if (form.allowed_ips.includes(ip)) {
+      toast.error("IP already added");
+      return;
+    }
+    setForm({ ...form, allowed_ips: [...form.allowed_ips, ip], ipInput: "" });
+  };
+
+  const removeIp = (ip: string) => {
+    setForm({ ...form, allowed_ips: form.allowed_ips.filter((i) => i !== ip) });
+  };
+
   const resetForm = () => {
-    setForm({ office_name: "", static_ip: "", latitude: "", longitude: "", allowed_radius: 50 });
+    setForm({ office_name: "", allowed_ips: [], ipInput: "", latitude: "", longitude: "", allowed_radius: 50 });
     setEditingId(null);
     setShowForm(false);
   };
 
   const handleSubmit = async () => {
-    if (!form.office_name || !form.static_ip || !form.latitude || !form.longitude) {
-      toast.error("Please fill in all required fields");
+    if (!form.office_name || form.allowed_ips.length === 0 || !form.latitude || !form.longitude) {
+      toast.error("Please fill in all required fields and add at least one IP");
       return;
     }
     try {
-      const payload = { ...form, latitude: parseFloat(form.latitude), longitude: parseFloat(form.longitude), allowed_radius: Number(form.allowed_radius) };
+      const payload = { office_name: form.office_name, allowed_ips: form.allowed_ips, latitude: parseFloat(form.latitude), longitude: parseFloat(form.longitude), allowed_radius: Number(form.allowed_radius) };
       if (editingId) {
         await updateMutation.mutateAsync({ id: editingId, data: payload });
         toast.success("Office updated");
@@ -55,7 +71,8 @@ export default function AdminOfficesPage() {
   const handleEdit = (office: any) => {
     setForm({
       office_name: office.office_name,
-      static_ip: office.static_ip,
+      allowed_ips: office.allowed_ips || [],
+      ipInput: "",
       latitude: String(office.latitude),
       longitude: String(office.longitude),
       allowed_radius: office.allowed_radius,
@@ -152,8 +169,28 @@ export default function AdminOfficesPage() {
               <Input value={form.office_name} onChange={(e) => setForm({ ...form, office_name: e.target.value })} placeholder="Main Office" />
             </div>
             <div>
-              <label className="text-sm font-medium mb-1 block">Static IP *</label>
-              <Input value={form.static_ip} onChange={(e) => setForm({ ...form, static_ip: e.target.value })} placeholder="192.168.1.0" />
+              <label className="text-sm font-medium mb-1 block">Allowed IPs *</label>
+              <div className="flex gap-2 mb-2 flex-wrap">
+                {form.allowed_ips.map((ip) => (
+                  <Badge key={ip} variant="secondary" className="gap-1 pr-1">
+                    {ip}
+                    <button onClick={() => removeIp(ip)} className="hover:text-destructive ml-1">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  value={form.ipInput}
+                  onChange={(e) => setForm({ ...form, ipInput: e.target.value })}
+                  placeholder="192.168.1.0"
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addIp(); } }}
+                />
+                <Button type="button" variant="outline" size="icon" onClick={addIp}>
+                  <PlusCircle className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
             <div>
               <label className="text-sm font-medium mb-1 block">Allowed Radius (m)</label>
@@ -205,7 +242,11 @@ export default function AdminOfficesPage() {
               <CardContent className="space-y-3">
                 <div className="flex items-center gap-2 text-sm">
                   <Wifi className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-mono text-xs">{office.static_ip}</span>
+                  <div className="flex flex-wrap gap-1">
+                    {(office.allowed_ips || []).map((ip: string) => (
+                      <span key={ip} className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">{ip}</span>
+                    ))}
+                  </div>
                 </div>
                 <div className="flex items-center gap-2 text-sm">
                   <MapPin className="h-4 w-4 text-muted-foreground" />
@@ -222,6 +263,10 @@ export default function AdminOfficesPage() {
                 <Separator />
 
                 <div className="flex gap-2">
+                  <Button variant="outline" size="sm" className="flex-1 gap-2" onClick={() => setSelectedOffice({ id: office._id, name: office.office_name })}>
+                    <Users className="h-3 w-3" />
+                    Members
+                  </Button>
                   <Button variant="outline" size="sm" className="flex-1 gap-2" onClick={() => handleEdit(office)}>
                     <Edit2 className="h-3 w-3" />
                     Edit
@@ -239,6 +284,14 @@ export default function AdminOfficesPage() {
           <div className="col-span-full text-center py-12 text-muted-foreground">No offices configured yet</div>
         )}
       </div>
+
+      {selectedOffice && (
+        <OfficeMembers
+          officeId={selectedOffice.id}
+          officeName={selectedOffice.name}
+          onClose={() => setSelectedOffice(null)}
+        />
+      )}
     </div>
   );
 }

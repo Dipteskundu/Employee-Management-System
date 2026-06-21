@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Users, Search, Plus, MoreVertical, Mail, Phone, Loader2, Trash2, Edit2, X } from "lucide-react";
+import { Users, Search, Plus, MoreVertical, Mail, Loader2, Trash2, Edit2, X } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useEmployees, useDeleteEmployee, useCreateEmployee, useUpdateEmployee } from "@/hooks/useEmployees";
+import { useOffices } from "@/hooks/useOffices";
 import { DEPARTMENTS } from "@/lib/constants";
 import { toast } from "sonner";
 
@@ -21,14 +22,16 @@ export default function EmployeesContent() {
   const [search, setSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState({ username: "", email: "", password: "", phone_number: "", department: "", role: "employee" });
+  const [form, setForm] = useState({ username: "", email: "", password: "", department: "", role: "employee", assigned_office_id: "" });
 
   const { data, isLoading } = useEmployees();
+  const { data: officesData } = useOffices();
   const createMutation = useCreateEmployee();
   const updateMutation = useUpdateEmployee();
   const deleteMutation = useDeleteEmployee();
 
   const employees = data?.employees || [];
+  const offices = officesData?.offices || [];
 
   const filtered = employees.filter((e: any) =>
     e.username?.toLowerCase().includes(search.toLowerCase()) ||
@@ -37,20 +40,20 @@ export default function EmployeesContent() {
   );
 
   const resetForm = () => {
-    setForm({ username: "", email: "", password: "", phone_number: "", department: "", role: "employee" });
+    setForm({ username: "", email: "", password: "", department: "", role: "employee", assigned_office_id: "" });
     setEditingId(null);
     setShowForm(false);
   };
 
   const handleSubmit = async () => {
-    if (!form.username || !form.email || !form.phone_number || !form.department) {
-      toast.error("Please fill in all required fields");
+    if (!form.username || !form.email || !form.department || !form.assigned_office_id) {
+      toast.error("Please fill in all required fields including office");
       return;
     }
     try {
       if (editingId) {
-        const { password, ...updateData } = form;
-        await updateMutation.mutateAsync({ id: editingId, data: password ? form : updateData });
+        const { assigned_office_id, password, ...updateData } = form;
+        await updateMutation.mutateAsync({ id: editingId, data: { ...updateData, assigned_office_id, ...(password ? { password } : {}) } });
         toast.success("Employee updated");
       } else {
         if (!form.password) { toast.error("Password is required for new employees"); return; }
@@ -68,15 +71,16 @@ export default function EmployeesContent() {
       username: emp.username || "",
       email: emp.email || "",
       password: "",
-      phone_number: emp.phone_number || "",
       department: emp.department || "",
       role: emp.role || "employee",
+      assigned_office_id: typeof emp.assigned_office_id === "object" ? emp.assigned_office_id?._id || "" : emp.assigned_office_id || "",
     });
     setEditingId(emp._id);
     setShowForm(true);
   };
 
   const handleDelete = async (id: string) => {
+    console.log("handleDelete called with", id);
     if (!window.confirm("Are you sure you want to delete this employee?")) return;
     try {
       await deleteMutation.mutateAsync(id);
@@ -165,10 +169,6 @@ export default function EmployeesContent() {
               <Input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="john@company.com" />
             </div>
             <div>
-              <label className="text-sm font-medium mb-1 block">Phone *</label>
-              <Input value={form.phone_number} onChange={(e) => setForm({ ...form, phone_number: e.target.value })} placeholder="+1 234 567 8901" />
-            </div>
-            <div>
               <label className="text-sm font-medium mb-1 block">Department *</label>
               <select
                 value={form.department}
@@ -189,6 +189,19 @@ export default function EmployeesContent() {
                 <option value="employee">Employee</option>
                 <option value="manager">Manager</option>
                 <option value="admin">Admin</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">Office / IP Group</label>
+              <select
+                value={form.assigned_office_id}
+                onChange={(e) => setForm({ ...form, assigned_office_id: e.target.value })}
+                className="flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="">Select office...</option>
+                {offices.map((o: any) => (
+                  <option key={o._id} value={o._id}>{o.office_name}</option>
+                ))}
               </select>
             </div>
             <div>
@@ -268,12 +281,12 @@ export default function EmployeesContent() {
                     </td>
                     <td className="py-3 text-right">
                       <div className="flex items-center justify-end gap-1">
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(emp)}>
+                        <button type="button" className="inline-flex shrink-0 items-center justify-center rounded-lg h-8 w-8 hover:bg-muted hover:text-foreground transition-colors" onClick={() => handleEdit(emp)}>
                           <Edit2 className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDelete(emp._id)}>
+                        </button>
+                        <button type="button" className="inline-flex shrink-0 items-center justify-center rounded-lg h-8 w-8 text-destructive hover:bg-destructive/20 transition-colors" onClick={() => handleDelete(emp._id)}>
                           <Trash2 className="h-4 w-4" />
-                        </Button>
+                        </button>
                       </div>
                     </td>
                   </motion.tr>

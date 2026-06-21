@@ -7,7 +7,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useTeamStats, useGenerateReport } from "@/hooks/useReports";
+import { useOffices } from "@/hooks/useOffices";
 import { format, startOfMonth, endOfMonth } from "date-fns";
+import { apiService } from "@/lib/api";
 
 const statusBadge: Record<string, string> = {
   ready: "gradient-success text-white",
@@ -16,12 +18,15 @@ const statusBadge: Record<string, string> = {
 };
 
 export default function ManagerReportsPage() {
-  const monthStart = format(startOfMonth(new Date()), "yyyy-MM-dd");
-  const monthEnd = format(endOfMonth(new Date()), "yyyy-MM-dd");
-  const reportParams = `start_date=${monthStart}&end_date=${monthEnd}`;
+  const [startDate, setStartDate] = useState(format(startOfMonth(new Date()), "yyyy-MM-dd"));
+  const [endDate, setEndDate] = useState(format(endOfMonth(new Date()), "yyyy-MM-dd"));
+  const [selectedOffice, setSelectedOffice] = useState("");
+  const reportParams = `start_date=${startDate}&end_date=${endDate}${selectedOffice ? `&office_id=${selectedOffice}` : ""}`;
 
   const { data: teamStatsData, isLoading: statsLoading } = useTeamStats();
   const { data: reportData, isLoading: reportLoading } = useGenerateReport(reportParams);
+  const { data: officesData } = useOffices();
+  const offices = officesData?.offices || [];
 
   const stats = teamStatsData?.stats;
   const report = reportData?.summary;
@@ -33,7 +38,7 @@ export default function ManagerReportsPage() {
   const overtimeHours = report?.overtime || 0;
 
   const reportTypes = [
-    { title: "Monthly Attendance Summary", period: `${monthStart} to ${monthEnd}`, records: report?.total_records || 0, status: reportLoading ? "generating" as const : "ready" as const },
+    { title: "Monthly Attendance Summary", period: `${startDate} to ${endDate}`, records: report?.total_records || 0, status: reportLoading ? "generating" as const : "ready" as const },
     { title: "Late Arrivals Analysis", period: "This Month", records: report?.late || 0, status: "ready" as const },
     { title: "Overtime Report", period: "This Month", records: report?.overtime || 0, status: "ready" as const },
   ];
@@ -59,6 +64,33 @@ export default function ManagerReportsPage() {
           <div>
             <h1 className="text-3xl font-bold">Reports</h1>
             <p className="text-muted-foreground">Generate and view attendance reports</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 text-sm">
+            <select
+              value={selectedOffice}
+              onChange={(e) => setSelectedOffice(e.target.value)}
+              className="flex h-9 rounded-lg border border-input bg-background px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="">All Offices</option>
+              {offices.map((o: any) => (
+                <option key={o._id} value={o._id}>{o.office_name}</option>
+              ))}
+            </select>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="flex h-9 rounded-lg border border-input bg-background px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+            <span className="text-muted-foreground">to</span>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="flex h-9 rounded-lg border border-input bg-background px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            />
           </div>
         </div>
       </motion.div>
@@ -148,7 +180,10 @@ export default function ManagerReportsPage() {
                     {report.status}
                   </Badge>
                   {report.status === "ready" && (
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
+                      const params = `start_date=${startDate}&end_date=${endDate}`;
+                      apiService.reports.download(params);
+                    }}>
                       <Download className="h-4 w-4" />
                     </Button>
                   )}
