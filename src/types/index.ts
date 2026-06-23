@@ -21,7 +21,6 @@ export interface Settings {
   work_hours_start: string;
   work_hours_end: string;
   late_threshold_minutes: number;
-  otp_enabled: boolean;
   gps_enabled: boolean;
   ip_verification_enabled: boolean;
   late_arrival_alerts: boolean;
@@ -55,7 +54,6 @@ export interface Attendance {
     longitude: number;
   };
   status: AttendanceStatus;
-  otp_verified: boolean;
   ip_verified: boolean;
   gps_verified: boolean;
   created_at: string;

@@ -20,7 +20,6 @@ export default function AdminSettingsPage() {
     work_hours_start: "09:00",
     work_hours_end: "18:00",
     late_threshold_minutes: 15,
-    otp_enabled: true,
     gps_enabled: true,
     ip_verification_enabled: true,
     late_arrival_alerts: true,
@@ -46,7 +45,6 @@ export default function AdminSettingsPage() {
         work_hours_start: s.work_hours_start || "09:00",
         work_hours_end: s.work_hours_end || "18:00",
         late_threshold_minutes: s.late_threshold_minutes ?? 15,
-        otp_enabled: s.otp_enabled ?? true,
         gps_enabled: s.gps_enabled ?? true,
         ip_verification_enabled: s.ip_verification_enabled ?? true,
         late_arrival_alerts: s.late_arrival_alerts ?? true,
@@ -191,27 +189,6 @@ export default function AdminSettingsPage() {
             <CardDescription>Configure security verification methods</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Mail className="h-5 w-5 text-muted-foreground" />
-                <div>
-                  <p className="font-medium">OTP Verification</p>
-                  <p className="text-sm text-muted-foreground">Send one-time passwords via email</p>
-                </div>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={settings.otp_enabled}
-                  onChange={(e) => updateSetting("otp_enabled", e.target.checked)}
-                  className="sr-only peer"
-                />
-                <div className="w-11 h-6 bg-muted peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary" />
-              </label>
-            </div>
-
-            <Separator />
-
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <Globe className="h-5 w-5 text-muted-foreground" />

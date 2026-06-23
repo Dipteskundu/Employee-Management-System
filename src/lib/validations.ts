@@ -17,10 +17,6 @@ export const registerSchema = z.object({
   path: ["confirm_password"],
 });
 
-export const otpSchema = z.object({
-  otp: z.string().length(6, "OTP must be 6 digits"),
-});
-
 export const officeSchema = z.object({
   office_name: z.string().min(1, "Office name is required"),
   allowed_ips: z.array(z.string().min(1)).min(1, "At least one IP is required"),
@@ -31,5 +27,4 @@ export const officeSchema = z.object({
 
 export type LoginInput = z.infer<typeof loginSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;
-export type OtpInput = z.infer<typeof otpSchema>;
 export type OfficeInput = z.infer<typeof officeSchema>;

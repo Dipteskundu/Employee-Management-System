@@ -6,6 +6,7 @@ import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import ThemeToggle from "./ThemeToggle";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -103,6 +104,8 @@ export default function Header({ user, onMenuToggle, isMobile }: HeaderProps) {
             />
           </div>
         )}
+
+        <ThemeToggle />
 
         <Popover>
           <PopoverTrigger asChild>

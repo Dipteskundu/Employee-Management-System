@@ -1,16 +1,16 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Clock, MapPin, Wifi, CheckCircle2, AlertCircle, XCircle, Mail, Loader2, Timer } from "lucide-react";
+import { Clock, MapPin, Wifi, CheckCircle2, AlertCircle, XCircle, Loader2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useClockIn, useClockOut, useAttendanceHistory } from "@/hooks/useAttendance";
 import { useOffices } from "@/hooks/useOffices";
-import { getUser, getToken, sendOtp, verifyOtp, apiService } from "@/lib/api";
+import { getUser, apiService } from "@/lib/api";
 import { requestNotificationPermission, showNotification } from "@/lib/notifications";
+import { useConfetti } from "@/hooks/useConfetti";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
@@ -30,21 +30,14 @@ export default function AttendancePage() {
   const { data: officesData } = useOffices();
   const clockInMutation = useClockIn();
   const clockOutMutation = useClockOut();
+  const { fireConfetti } = useConfetti();
 
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [isClockedIn, setIsClockedIn] = useState(false);
   const [hadClockOut, setHadClockOut] = useState(false);
-  const [otp, setOtp] = useState("");
-  const [otpVerified, setOtpVerified] = useState(false);
-  const [otpSending, setOtpSending] = useState(false);
-  const [otpCountdown, setOtpCountdown] = useState(0);
-  const [otpError, setOtpError] = useState("");
-  const [otpDeliveryInfo, setOtpDeliveryInfo] = useState("");
-  const otpTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [steps, setSteps] = useState<VerificationStep[]>([
     { step: 1, title: "Network Check", description: "Verifying office IP address", icon: Wifi, status: "active" },
     { step: 2, title: "Location Check", description: "Verifying GPS coordinates", icon: MapPin, status: "pending" },
-    { step: 3, title: "Identity Verification", description: "Enter OTP sent to your email", icon: Mail, status: "pending" },
   ]);
 
   const [userOffice, setUserOffice] = useState<any>(null);
@@ -122,51 +115,6 @@ export default function AttendancePage() {
     failed: { icon: XCircle, color: "text-destructive", bg: "bg-destructive/10" },
   };
 
-  const triggerSendOtp = async () => {
-    if (otpSending || otpCountdown > 0) return;
-    setOtpSending(true);
-    setOtpError("");
-    setOtpDeliveryInfo("");
-    try {
-      const result = await sendOtp();
-      setOtpCountdown(300);
-      setOtpDeliveryInfo(result.message || "");
-      if (result.message?.includes("[DEV]")) {
-        toast.warning("OTP only logged to server console (check Brevo API key)");
-      } else {
-        toast.success(result.message || "OTP sent to your email");
-      }
-    } catch (err: any) {
-      setOtpError(err.message || "Failed to send OTP");
-      toast.error(err.message || "Failed to send OTP");
-    } finally {
-      setOtpSending(false);
-    }
-  };
-
-  useEffect(() => {
-    if (steps[2].status === "active" && !otpVerified && !otpSending && otpCountdown === 0) {
-      triggerSendOtp();
-    }
-  }, [steps[2].status]);
-
-  useEffect(() => {
-    if (otpCountdown > 0) {
-      otpTimerRef.current = setInterval(() => {
-        setOtpCountdown((prev) => {
-          if (prev <= 1) {
-            if (otpTimerRef.current) clearInterval(otpTimerRef.current);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    }
-    return () => {
-      if (otpTimerRef.current) clearInterval(otpTimerRef.current);
-    };
-  }, [otpCountdown > 0]);
-
   const runVerification = async () => {
     setSteps((prev) =>
       prev.map((s) => (s.step === 1 ? { ...s, status: "completed" as VerificationStatus } : s.step === 2 ? { ...s, status: "active" as VerificationStatus } : s))
@@ -174,7 +122,7 @@ export default function AttendancePage() {
 
     setTimeout(() => {
       setSteps((prev) =>
-        prev.map((s) => (s.step === 2 ? { ...s, status: "completed" as VerificationStatus } : s.step === 3 ? { ...s, status: "active" as VerificationStatus } : s))
+        prev.map((s) => (s.step === 2 ? { ...s, status: "completed" as VerificationStatus } : s))
       );
     }, 800);
   };
@@ -200,17 +148,13 @@ export default function AttendancePage() {
         setIsClockedIn(false);
         setHadClockOut(true);
       } else {
-        if (!otpVerified) {
-          toast.error("Please verify OTP first");
-          setClocking(false);
-          return;
-        }
         await clockInMutation.mutateAsync({
           ip: userIp,
           latitude: userGps.latitude,
           longitude: userGps.longitude,
         });
         toast.success("Clock in successful");
+        fireConfetti();
         showNotification("Clocked In", {
           body: `You clocked in at ${format(new Date(), "h:mm a")}`,
         });
@@ -220,20 +164,6 @@ export default function AttendancePage() {
       toast.error(err.message || "Failed to record attendance");
     } finally {
       setClocking(false);
-    }
-  };
-
-  const handleVerifyOtp = async () => {
-    if (otp.length !== 6) return;
-    setOtpError("");
-    try {
-      await verifyOtp(otp);
-      setOtpVerified(true);
-      setSteps((prev) => prev.map((s) => (s.step === 3 ? { ...s, status: "completed" as VerificationStatus } : s)));
-      toast.success("OTP verified successfully");
-    } catch (err: any) {
-      setOtpError(err.message || "Invalid OTP");
-      toast.error(err.message || "Invalid OTP");
     }
   };
 
@@ -250,7 +180,7 @@ export default function AttendancePage() {
         <Clock className="h-7 w-7 sm:h-10 sm:w-10 text-primary" />
         <div className="min-w-0">
           <h1 className="text-xl sm:text-3xl font-bold">Clock In / Out</h1>
-          <p className="text-xs sm:text-sm text-muted-foreground">Complete the triple-lock verification to mark attendance</p>
+          <p className="text-xs sm:text-sm text-muted-foreground">Complete the verification to mark attendance</p>
         </div>
       </motion.div>
 
@@ -339,13 +269,12 @@ export default function AttendancePage() {
         >
           <Card className="shadow-premium">
             <CardHeader className="px-4 sm:px-6 pt-4 sm:pt-6">
-              <CardTitle className="text-sm sm:text-base">Triple-Lock Verification</CardTitle>
+              <CardTitle className="text-sm sm:text-base">Verification</CardTitle>
               <CardDescription className="text-xs">Complete all verification steps</CardDescription>
             </CardHeader>
             <CardContent className="px-4 sm:px-6 space-y-3 sm:space-y-4">
               {steps.map((step) => {
                 const config = statusConfig[step.status];
-                const Icon = config.icon;
                 return (
                   <motion.div
                     key={step.step}
@@ -362,73 +291,22 @@ export default function AttendancePage() {
                         Step {step.step}: {step.title}
                       </h3>
                       <p className="text-[10px] sm:text-sm text-muted-foreground">
-                        {step.step === 3 && currentUser?.email ? `Enter OTP sent to ${currentUser.email}` : step.description}
+                        {step.description}
                       </p>
                     </div>
-                    <Icon className={`h-4 w-4 sm:h-5 sm:w-5 ${config.color} shrink-0`} />
+                    <step.icon className={`h-4 w-4 sm:h-5 sm:w-5 ${config.color} shrink-0`} />
                   </motion.div>
                 );
               })}
 
-              {steps[2].status === "active" && !stepsComplete && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="space-y-3"
-                >
-                  {otpVerified ? (
-                    <div className="flex items-center gap-2 p-3 rounded-lg bg-emerald-500/10">
-                      <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-                      <span className="text-sm text-emerald-600 font-medium">OTP Verified</span>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="flex gap-2">
-                        <Input
-                          placeholder="Enter 6-digit OTP"
-                          value={otp}
-                          onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                          className="flex-1 text-center text-base sm:text-lg tracking-widest"
-                          maxLength={6}
-                        />
-                        <Button onClick={handleVerifyOtp} disabled={otp.length !== 6} className="shrink-0" size="sm">
-                          {otpSending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Verify"}
-                        </Button>
-                      </div>
-                      {otpError && (
-                        <p className="text-xs text-destructive">{otpError}</p>
-                      )}
-                      {otpSending && (
-                        <p className="text-xs text-muted-foreground flex items-center gap-1">
-                          <Loader2 className="h-3 w-3 animate-spin" /> Sending OTP...
-                        </p>
-                      )}
-                      {otpDeliveryInfo && (
-                        <p className="text-xs text-muted-foreground">{otpDeliveryInfo}</p>
-                      )}
-                      {otpCountdown > 0 && !otpSending && (
-                        <p className="text-xs text-muted-foreground flex items-center gap-1">
-                          <Timer className="h-3 w-3" /> OTP expires in {Math.floor(otpCountdown / 60)}:{(otpCountdown % 60).toString().padStart(2, "0")}
-                        </p>
-                      )}
-                      {otpCountdown === 0 && !otpSending && !otpVerified && (
-                        <Button variant="outline" size="sm" onClick={triggerSendOtp} className="text-xs">
-                          Resend OTP
-                        </Button>
-                      )}
-                    </>
-                  )}
-                </motion.div>
-              )}
-
               {!stepsComplete && !isClockedIn && (
                 <Button
-                  onClick={otpVerified ? handleClockAction : runVerification}
+                  onClick={steps[1].status === "completed" ? handleClockAction : runVerification}
                   className="w-full gradient-primary text-white"
                   size="lg"
-                  disabled={clocking || otpSending || !!wrongOfficeError}
+                  disabled={clocking || !!wrongOfficeError}
                 >
-                  {clocking ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Processing...</> : otpVerified ? "Clock In" : "Start Verification"}
+                  {clocking ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Processing...</> : steps[1].status === "completed" ? "Clock In" : "Start Verification"}
                 </Button>
               )}
 

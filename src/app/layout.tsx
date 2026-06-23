@@ -17,7 +17,7 @@ const jetbrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: "Triple-Lock Attendance System",
-  description: "Secure attendance management with IP, GPS, and OTP verification",
+  description: "Secure attendance management with IP and GPS verification",
   icons: {
     icon: "/favicon.ico",
   },

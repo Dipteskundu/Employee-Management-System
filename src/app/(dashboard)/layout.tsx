@@ -6,8 +6,10 @@ import { Clock } from "lucide-react";
 import Sidebar from "@/components/shared/Sidebar";
 import Header from "@/components/shared/Header";
 import WrongOfficeModal from "@/components/shared/WrongOfficeModal";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { type User } from "@/types";
 import { logout, apiService } from "@/lib/api";
+import { useKeyboardShortcuts, defaultShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { cn } from "@/lib/utils";
 
 export default function DashboardLayout({
@@ -22,6 +24,8 @@ export default function DashboardLayout({
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [wrongOffice, setWrongOffice] = useState<{ assigned: string; detected: string } | null>(null);
+
+  useKeyboardShortcuts(defaultShortcuts);
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -154,7 +158,9 @@ export default function DashboardLayout({
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <Header user={user} onMenuToggle={() => setMobileSidebarOpen(!mobileSidebarOpen)} isMobile={isMobile} />
         <main className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8 bg-[radial-gradient(circle_at_top_right,rgba(99,102,241,0.08),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(139,92,246,0.06),transparent_24%),linear-gradient(180deg,rgba(255,255,255,0.35),transparent_20%)] bg-dot-subtle">
-          {children}
+          <ErrorBoundary>
+            {children}
+          </ErrorBoundary>
         </main>
       </div>
 
