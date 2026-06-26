@@ -38,9 +38,9 @@ export default function RegisterPage() {
     setIsLoading(true);
     try {
       const payload = {
-        ...data,
         username: data.username.trim(),
         email: data.email.trim().toLowerCase(),
+        password: data.password,
         department: data.department.trim(),
       };
 
@@ -125,6 +125,9 @@ export default function RegisterPage() {
             <CardDescription className="text-muted-foreground">
               Join the Triple-Lock Attendance System
             </CardDescription>
+            <p className="text-xs text-muted-foreground">
+              New accounts are created as employee users and can sign in immediately after registration.
+            </p>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">

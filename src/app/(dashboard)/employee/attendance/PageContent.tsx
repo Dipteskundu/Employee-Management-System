@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { useClockIn, useClockOut, useAttendanceHistory } from "@/hooks/useAttendance";
 import { useOffices } from "@/hooks/useOffices";
 import { getUser, apiService } from "@/lib/api";
+import { getBrowserClientIp } from "@/lib/client-ip";
 import { requestNotificationPermission, showNotification } from "@/lib/notifications";
 import { useConfetti } from "@/hooks/useConfetti";
 import { toast } from "sonner";
@@ -44,7 +45,12 @@ export default function AttendancePage() {
   const [userIp, setUserIp] = useState("");
   const [userGps, setUserGps] = useState<{ latitude: number; longitude: number } | null>(null);
   const [clocking, setClocking] = useState(false);
-  const [wrongOfficeError, setWrongOfficeError] = useState<{ assigned: string; detected: string } | null>(null);
+  const [wrongOfficeError, setWrongOfficeError] = useState<{
+    assigned: string;
+    detected?: string;
+    message?: string;
+    reason?: "ip" | "location" | "combined";
+  } | null>(null);
 
   useEffect(() => {
     if (historyData?.attendance) {
@@ -70,31 +76,72 @@ export default function AttendancePage() {
   }, []);
 
   useEffect(() => {
-    fetch("https://api.ipify.org?format=json")
-      .then((r) => r.json())
-      .then((d) => setUserIp(d.ip))
-      .catch(() => setUserIp("unknown"));
+    let cancelled = false;
+
+    const loadClientIp = async () => {
+      const ip = await getBrowserClientIp();
+      if (!cancelled) {
+        setUserIp(ip || "unknown");
+      }
+    };
+
+    void loadClientIp();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
-    if (!userIp || !currentUser || currentUser.role === "admin") return;
-    const checkWrongOffice = async () => {
+    if (!userIp || !currentUser || (!userGps && currentUser.role !== "admin")) return;
+
+    if (currentUser.role === "admin") {
+      setWrongOfficeError(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    const checkAccess = async () => {
       try {
-        const result = await apiService.auth.checkOffice(userIp);
-        if (result.match === false && result.detected_office) {
+        const result = await apiService.auth.verifyAccess({
+          client_ip: userIp,
+          latitude: userGps?.latitude,
+          longitude: userGps?.longitude,
+        });
+
+        if (cancelled) {
+          return;
+        }
+
+        if (!result.allowed) {
           setWrongOfficeError({
             assigned: result.assigned_office || "Unknown",
-            detected: result.detected_office,
+            detected: result.detected_office || undefined,
+            message: result.reason || "Your IP address or location is not authorized.",
+            reason: result.ip_allowed ? "location" : result.gps_allowed ? "ip" : "combined",
           });
         } else {
           setWrongOfficeError(null);
         }
       } catch {
-        // endpoint might not exist yet
+        if (!cancelled) {
+          setWrongOfficeError({
+            assigned: "Unknown",
+            detected: undefined,
+            message: "We could not verify your IP address and location.",
+            reason: "combined",
+          });
+        }
       }
     };
-    checkWrongOffice();
-  }, [userIp, currentUser]);
+
+    void checkAccess();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [userIp, userGps, currentUser]);
 
   useEffect(() => {
     if (navigator.geolocation) {
@@ -128,18 +175,24 @@ export default function AttendancePage() {
   };
 
   const handleClockAction = async () => {
-    if (!userIp || !userGps) {
+    // Admin can clock in/out from any location without GPS
+    const isAdmin = currentUser?.role === "admin";
+
+    if (!isAdmin && (!userIp || !userGps)) {
       toast.error("Unable to get device location or IP");
       return;
     }
+
+    const lat = userGps?.latitude ?? 0;
+    const lng = userGps?.longitude ?? 0;
 
     setClocking(true);
     try {
       if (isClockedIn) {
         await clockOutMutation.mutateAsync({
           ip: userIp,
-          latitude: userGps.latitude,
-          longitude: userGps.longitude,
+          latitude: lat,
+          longitude: lng,
         });
         toast.success("Clock out successful");
         showNotification("Clocked Out", {
@@ -150,8 +203,8 @@ export default function AttendancePage() {
       } else {
         await clockInMutation.mutateAsync({
           ip: userIp,
-          latitude: userGps.latitude,
-          longitude: userGps.longitude,
+          latitude: lat,
+          longitude: lng,
         });
         toast.success("Clock in successful");
         fireConfetti();
@@ -252,11 +305,13 @@ export default function AttendancePage() {
           <p className="text-sm text-muted-foreground mb-1">
             You are registered under: <span className="font-semibold">{wrongOfficeError.assigned}</span>
           </p>
-          <p className="text-sm text-muted-foreground mb-3">
-            You are currently accessing from: <span className="font-semibold text-amber-600">{wrongOfficeError.detected}</span>
-          </p>
+          {wrongOfficeError.detected && (
+            <p className="text-sm text-muted-foreground mb-3">
+              You are currently accessing from: <span className="font-semibold text-amber-600">{wrongOfficeError.detected}</span>
+            </p>
+          )}
           <p className="text-sm text-muted-foreground">
-            Please connect from your assigned office network to mark attendance.
+            {wrongOfficeError.message || "Please connect from your assigned office network and location to mark attendance."}
           </p>
         </motion.div>
       )}

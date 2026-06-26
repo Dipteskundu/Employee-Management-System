@@ -91,6 +91,8 @@ export const apiService = {
     getMe: () => api.get<any>("/auth/me", getToken() || undefined),
     checkIp: () => api.get<{ success: boolean; allowed: boolean; ip: string }>("/auth/check-ip", getToken() || undefined),
     checkOffice: (ip: string) => api.post<any>("/auth/check-office", { ip }, getToken() || undefined),
+    verifyAccess: (data: { client_ip?: string; latitude?: number; longitude?: number }) =>
+      api.post<any>("/auth/verify-access", data, getToken() || undefined),
     updateProfile: (data: any) => api.put("/auth/profile", data, getToken() || undefined),
   },
   attendance: {

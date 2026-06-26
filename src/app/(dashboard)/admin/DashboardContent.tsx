@@ -28,6 +28,7 @@ type EmployeeLike = {
   username: string;
   department?: string;
   is_active?: boolean;
+  role?: string;
 };
 
 export default function AdminDashboard() {
@@ -264,144 +265,192 @@ export default function AdminDashboard() {
 
       <div className="grid gap-4 xl:grid-cols-[1.35fr_0.9fr] lg:gap-6">
         <motion.section variants={item}>
-          <div className="overflow-hidden rounded-2xl border border-border/40 bg-card shadow-card">
-            <div className="border-b border-border/30 px-5 py-4 sm:px-6">
-                <div className="flex items-center justify-between gap-3">
+          <div className="relative overflow-hidden rounded-2xl border border-border/40 bg-card shadow-card">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(99,102,241,0.08),transparent_40%),radial-gradient(circle_at_bottom_right,rgba(139,92,246,0.06),transparent_35%)]" />
+            <div className="relative">
+              <div className="flex items-center justify-between border-b border-border/30 px-5 py-4 sm:px-6">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-xl bg-gradient-to-br from-primary/15 to-violet-500/10 p-2.5 shadow-sm">
+                    <Users className="h-4 w-4 text-primary" />
+                  </div>
                   <div>
-                    <h3 className="text-sm font-semibold sm:text-base">Registered Users</h3>
-                    <p className="mt-0.5 text-xs text-muted-foreground/70 sm:text-sm">
-                      Click edit or delete to manage employees directly
+                    <h3 className="text-sm font-bold tracking-tight sm:text-base">Registered Users</h3>
+                    <p className="mt-0.5 text-[11px] text-muted-foreground/60 sm:text-xs">
+                      Manage employee accounts and roles
                     </p>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-xs gap-1 text-primary"
-                    onClick={() => router.push("/admin/employees")}
-                  >
-                    <Users className="h-3.5 w-3.5" />
-                    View All
-                  </Button>
                 </div>
-            </div>
-
-            <div className="p-2 sm:p-3">
-              {activities.length > 0 ? (
-                <div className="space-y-1">
-                  {activities.map((activity) => (
-                    <div
-                      key={activity.id}
-                      className="flex flex-col gap-2 rounded-xl px-3 py-2.5 transition-colors hover:bg-muted/30 sm:grid sm:grid-cols-[auto,1fr,auto,auto] sm:items-center sm:gap-3"
-                    >
-                      <div className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold text-white shadow-sm ${
-                        activity.active ? "bg-gradient-to-br from-emerald-500 to-teal-600" : "bg-gradient-to-br from-slate-400 to-slate-500"
-                      }`}>
-                        {activity.initials}
-                      </div>
-
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className="truncate text-sm font-medium sm:text-base">{activity.user}</p>
-                          <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                            activity.active ? "bg-emerald-500/10 text-emerald-700" : "bg-muted text-muted-foreground"
-                          }`}>
-                            {activity.action}
-                          </span>
-                        </div>
-                        <p className="mt-0.5 text-xs text-muted-foreground/65">
-                          {activity.target}
-                        </p>
-                      </div>
-
-                      <div className="flex items-center gap-1 sm:justify-end">
-                        <button
-                          onClick={() => openEdit(activity._employee)}
-                          className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground/50 transition-colors hover:bg-primary/10 hover:text-primary"
-                        >
-                          <Edit2 className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(activity.id, activity.user)}
-                          className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground/50 transition-colors hover:bg-destructive/10 hover:text-destructive"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="px-3 py-8 text-center text-sm text-muted-foreground">
-                  No users registered yet
-                </p>
-              )}
-
-              {editingEmployee && (
-                <motion.div
-                  initial={{ opacity: 0, y: -8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="mt-3 rounded-xl border border-border/50 bg-background p-4"
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="group/gap gap-1.5 rounded-xl border border-primary/15 bg-primary/5 px-3 text-xs font-medium text-primary transition-all hover:border-primary/30 hover:bg-primary/10"
+                  onClick={() => router.push("/admin/employees")}
                 >
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="text-sm font-semibold">Edit Employee</h4>
-                    <button onClick={() => setEditingEmployee(null)} className="text-muted-foreground/50 hover:text-foreground">
-                      <X className="h-4 w-4" />
-                    </button>
+                  <Users className="h-3.5 w-3.5" />
+                  View All
+                  <ArrowRight className="h-3 w-3 transition-transform group-hover/gap:translate-x-0.5" />
+                </Button>
+              </div>
+
+              <div className="p-3 sm:p-4">
+                {activities.length > 0 ? (
+                  <div className="space-y-2">
+                    {activities.map((activity, index) => {
+                      const roleColor = activity._employee?.role === "admin"
+                        ? "from-violet-500 to-purple-600"
+                        : activity._employee?.role === "manager"
+                        ? "from-blue-500 to-indigo-600"
+                        : "from-emerald-500 to-teal-600";
+                      const roleBadge = activity._employee?.role === "admin"
+                        ? "bg-violet-500/10 text-violet-700 border-violet-500/20"
+                        : activity._employee?.role === "manager"
+                        ? "bg-blue-500/10 text-blue-700 border-blue-500/20"
+                        : "bg-emerald-500/10 text-emerald-700 border-emerald-500/20";
+                      const roleLabel = activity._employee?.role === "admin"
+                        ? "Admin"
+                        : activity._employee?.role === "manager"
+                        ? "Manager"
+                        : "Employee";
+                      const accentBar = activity._employee?.role === "admin"
+                        ? "bg-gradient-to-b from-violet-500 to-purple-600"
+                        : activity._employee?.role === "manager"
+                        ? "bg-gradient-to-b from-blue-500 to-indigo-600"
+                        : "bg-gradient-to-b from-emerald-500 to-teal-600";
+
+                      return (
+                        <motion.div
+                          key={activity.id}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: index * 0.06, duration: 0.4, ease: [0.25, 0.4, 0.25, 1] }}
+                          className="group relative flex items-center gap-3 rounded-xl border border-border/40 bg-background/60 p-3 transition-all duration-200 hover:-translate-y-0.5 hover:border-border/60 hover:bg-background/80 hover:shadow-card sm:gap-4"
+                        >
+                          <div className={`absolute left-0 top-1/2 h-8 w-1 -translate-y-1/2 rounded-full ${accentBar}`} />
+
+                          <div className="relative">
+                            <div className={`flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br text-sm font-bold text-white shadow-md ${roleColor}`}>
+                              {activity.initials}
+                            </div>
+                            <div className={`absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-background ${activity.active ? "bg-emerald-500" : "bg-slate-400"}`} />
+                          </div>
+
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="truncate text-sm font-semibold sm:text-[15px]">{activity.user}</p>
+                              <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold ${roleBadge}`}>
+                                {roleLabel}
+                              </span>
+                            </div>
+                            <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground/60">
+                              <Building2 className="h-3 w-3" />
+                              <span>{activity.target}</span>
+                              <span className="text-border">·</span>
+                              <span className={activity.active ? "text-emerald-600" : "text-muted-foreground/50"}>
+                                {activity.action}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => openEdit(activity._employee)}
+                              className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground/40 transition-all hover:bg-primary/10 hover:text-primary"
+                            >
+                              <Edit2 className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(activity.id, activity.user)}
+                              className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground/40 transition-all hover:bg-destructive/10 hover:text-destructive"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </motion.div>
+                      );
+                    })}
                   </div>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div>
-                      <label className="text-xs font-medium mb-1 block">Username</label>
-                      <Input
-                        value={editForm.username}
-                        onChange={(e) => setEditForm({ ...editForm, username: e.target.value })}
-                        className="h-9 text-sm"
-                      />
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-10 text-center">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-muted/50">
+                      <Users className="h-5 w-5 text-muted-foreground/40" />
                     </div>
-                    <div>
-                      <label className="text-xs font-medium mb-1 block">Email</label>
-                      <Input
-                        value={editForm.email}
-                        onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
-                        className="h-9 text-sm"
-                      />
+                    <p className="mt-3 text-sm font-medium text-muted-foreground/70">No users registered yet</p>
+                    <p className="mt-1 text-xs text-muted-foreground/50">Employees will appear here once added</p>
+                  </div>
+                )}
+
+                {editingEmployee && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mt-3 rounded-xl border border-primary/20 bg-primary/[0.02] p-4"
+                  >
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                        <div className="rounded-lg bg-primary/10 p-1.5">
+                          <Edit2 className="h-3.5 w-3.5 text-primary" />
+                        </div>
+                        <h4 className="text-sm font-semibold">Edit Employee</h4>
+                      </div>
+                      <button onClick={() => setEditingEmployee(null)} className="rounded-lg p-1 text-muted-foreground/40 transition-colors hover:bg-muted/50 hover:text-foreground">
+                        <X className="h-4 w-4" />
+                      </button>
                     </div>
-                    <div>
-                      <label className="text-xs font-medium mb-1 block">Department</label>
-                      <select
-                        value={editForm.department}
-                        onChange={(e) => setEditForm({ ...editForm, department: e.target.value })}
-                        className="flex h-9 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div>
+                        <label className="mb-1.5 block text-xs font-medium text-muted-foreground/70">Username</label>
+                        <Input
+                          value={editForm.username}
+                          onChange={(e) => setEditForm({ ...editForm, username: e.target.value })}
+                          className="h-9 text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1.5 block text-xs font-medium text-muted-foreground/70">Email</label>
+                        <Input
+                          value={editForm.email}
+                          onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                          className="h-9 text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1.5 block text-xs font-medium text-muted-foreground/70">Department</label>
+                        <select
+                          value={editForm.department}
+                          onChange={(e) => setEditForm({ ...editForm, department: e.target.value })}
+                          className="flex h-9 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                        >
+                          <option value="">Select...</option>
+                          {DEPARTMENTS.map((d: string) => <option key={d} value={d}>{d}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="mb-1.5 block text-xs font-medium text-muted-foreground/70">Role</label>
+                        <select
+                          value={editForm.role}
+                          onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
+                          className="flex h-9 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                        >
+                          <option value="employee">Employee</option>
+                          <option value="manager">Manager</option>
+                          <option value="admin">Admin</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 mt-4">
+                      <Button variant="outline" size="sm" onClick={() => setEditingEmployee(null)}>Cancel</Button>
+                      <Button
+                        size="sm"
+                        className="gradient-primary text-white"
+                        onClick={handleEditSave}
+                        disabled={updateMutation.isPending}
                       >
-                        <option value="">Select...</option>
-                        {DEPARTMENTS.map((d: string) => <option key={d} value={d}>{d}</option>)}
-                      </select>
+                        {updateMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Save Changes"}
+                      </Button>
                     </div>
-                    <div>
-                      <label className="text-xs font-medium mb-1 block">Role</label>
-                      <select
-                        value={editForm.role}
-                        onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
-                        className="flex h-9 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                      >
-                        <option value="employee">Employee</option>
-                        <option value="manager">Manager</option>
-                        <option value="admin">Admin</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div className="flex gap-2 mt-3">
-                    <Button variant="outline" size="sm" onClick={() => setEditingEmployee(null)}>Cancel</Button>
-                    <Button
-                      size="sm"
-                      className="gradient-primary text-white"
-                      onClick={handleEditSave}
-                      disabled={updateMutation.isPending}
-                    >
-                      {updateMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Save"}
-                    </Button>
-                  </div>
-                </motion.div>
-              )}
+                  </motion.div>
+                )}
+              </div>
             </div>
           </div>
         </motion.section>

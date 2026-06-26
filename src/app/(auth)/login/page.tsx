@@ -14,12 +14,29 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { loginSchema, type LoginInput } from "@/lib/validations";
+import { ROLES } from "@/lib/constants";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
-const ADMIN_LOGIN = {
-  identifier: "admin@triplelock.local",
-  password: "Admin@2026!",
-};
+const DEMO_LOGINS = [
+  {
+    label: "Admin",
+    role: ROLES.ADMIN,
+    identifier: "admin@triplelock.local",
+    password: "Admin@2026!",
+  },
+  {
+    label: "Manager",
+    role: ROLES.MANAGER,
+    identifier: "manager@triplelock.local",
+    password: "Manager@2026!",
+  },
+  {
+    label: "Employee",
+    role: ROLES.EMPLOYEE,
+    identifier: "employee@triplelock.local",
+    password: "Employee@2026!",
+  },
+] as const;
 
 export default function LoginPage() {
   const router = useRouter();
@@ -87,10 +104,15 @@ export default function LoginPage() {
     }
   };
 
-  const useAdminLogin = async () => {
-    setValue("identifier", ADMIN_LOGIN.identifier, { shouldValidate: true });
-    setValue("password", ADMIN_LOGIN.password, { shouldValidate: true });
-    await onSubmit(ADMIN_LOGIN);
+  const handleDemoLogin = async (demoLogin: typeof DEMO_LOGINS[number]) => {
+    const credentials = {
+      identifier: demoLogin.identifier,
+      password: demoLogin.password,
+    };
+
+    setValue("identifier", credentials.identifier, { shouldValidate: true });
+    setValue("password", credentials.password, { shouldValidate: true });
+    await onSubmit(credentials);
   };
 
   return (
@@ -177,30 +199,43 @@ export default function LoginPage() {
             <div className="mt-5 rounded-xl border border-primary/20 bg-primary/5 p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-sm font-semibold text-foreground">Admin quick access</p>
+                  <p className="text-sm font-semibold text-foreground">Demo access</p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Click the button below to auto-fill and sign in as admin.
+                    Use these pre-created accounts for quick testing or product walkthroughs.
                   </p>
                 </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => void useAdminLogin()}
-                  disabled={isLoading}
-                >
-                  Use Admin Login
-                </Button>
               </div>
 
-              <div className="mt-3 grid gap-2 text-xs font-mono text-muted-foreground">
-                <div className="flex items-center justify-between gap-2 rounded-md bg-background/80 px-3 py-2">
-                  <span>Email</span>
-                  <span className="break-all text-right text-foreground">{ADMIN_LOGIN.identifier}</span>
-                </div>
-                <div className="flex items-center justify-between gap-2 rounded-md bg-background/80 px-3 py-2">
-                  <span>Password</span>
-                  <span className="text-foreground">{ADMIN_LOGIN.password}</span>
-                </div>
+              <div className="mt-4 grid gap-3">
+                {DEMO_LOGINS.map((demoLogin) => (
+                  <button
+                    key={demoLogin.role}
+                    type="button"
+                    onClick={() => void handleDemoLogin(demoLogin)}
+                    disabled={isLoading}
+                    className="rounded-xl border border-border bg-background/80 px-3 py-3 text-left transition-colors hover:border-primary/40 hover:bg-background disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">{demoLogin.label}</p>
+                        <p className="text-xs text-muted-foreground capitalize">{demoLogin.role}</p>
+                      </div>
+                      <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">
+                        Click to fill
+                      </span>
+                    </div>
+                    <div className="mt-2 grid gap-1 text-xs font-mono text-muted-foreground">
+                      <div className="flex items-center justify-between gap-2">
+                        <span>Email</span>
+                        <span className="break-all text-right text-foreground">{demoLogin.identifier}</span>
+                      </div>
+                      <div className="flex items-center justify-between gap-2">
+                        <span>Password</span>
+                        <span className="text-foreground">{demoLogin.password}</span>
+                      </div>
+                    </div>
+                  </button>
+                ))}
               </div>
             </div>
 

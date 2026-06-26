@@ -10,6 +10,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { type User } from "@/types";
 import { logout, apiService } from "@/lib/api";
 import { useKeyboardShortcuts, defaultShortcuts } from "@/hooks/useKeyboardShortcuts";
+import { getBrowserClientIp } from "@/lib/client-ip";
 import { cn } from "@/lib/utils";
 
 export default function DashboardLayout({
@@ -23,7 +24,13 @@ export default function DashboardLayout({
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const [wrongOffice, setWrongOffice] = useState<{ assigned: string; detected: string } | null>(null);
+  const [wrongOffice, setWrongOffice] = useState<{
+    assigned: string;
+    detected?: string;
+    message?: string;
+    reason?: "ip" | "location" | "combined";
+  } | null>(null);
+  const [accessChecked, setAccessChecked] = useState(false);
 
   useKeyboardShortcuts(defaultShortcuts);
 
@@ -69,37 +76,78 @@ export default function DashboardLayout({
 
   useEffect(() => {
     if (!user) return;
-    const checkIpAccess = async () => {
+
+    if (user.role === "admin") {
+      setWrongOffice(null);
+      setAccessChecked(true);
+      return;
+    }
+
+    let cancelled = false;
+
+    const checkAccess = async () => {
       try {
-        const ipResult = await apiService.auth.checkIp();
-        if (!ipResult.allowed) {
-          localStorage.removeItem("token");
-          localStorage.removeItem("user");
-          router.replace("/unauthorized-ip");
+        const clientIp = await getBrowserClientIp();
+        const location = await new Promise<{ latitude: number; longitude: number }>((resolve, reject) => {
+          if (!navigator.geolocation) {
+            reject(new Error("Geolocation is not supported"));
+            return;
+          }
+
+          navigator.geolocation.getCurrentPosition(
+            (position) =>
+              resolve({
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude,
+              }),
+            () => reject(new Error("Location permission is required")),
+            { enableHighAccuracy: true, timeout: 10000 }
+          );
+        });
+
+        const accessResult = await apiService.auth.verifyAccess({
+          client_ip: clientIp,
+          latitude: location.latitude,
+          longitude: location.longitude,
+        });
+
+        if (cancelled) {
           return;
         }
 
-        if (user.role !== "admin") {
-          try {
-            const officeResult = await apiService.auth.checkOffice(ipResult.ip);
-            if (officeResult.match === false && officeResult.detected_office) {
-              setWrongOffice({
-                assigned: officeResult.assigned_office || "Unknown",
-                detected: officeResult.detected_office,
-              });
-            }
-          } catch {
-            // check-office endpoint might not exist yet, silently continue
-          }
+        if (!accessResult.allowed) {
+          setWrongOffice({
+            assigned: accessResult.assigned_office || "Your assigned office",
+            detected: accessResult.detected_office || undefined,
+            message: accessResult.reason || "Your IP address or location is not authorized.",
+            reason: accessResult.ip_allowed ? "location" : accessResult.gps_allowed ? "ip" : "combined",
+          });
+        } else {
+          setWrongOffice(null);
         }
       } catch {
-        // silently fail - don't block the app if IP check fails
+        if (!cancelled) {
+          setWrongOffice({
+            assigned: "Unknown office",
+            message: "We could not verify your IP address and location.",
+            reason: "combined",
+          });
+        }
+      } finally {
+        if (!cancelled) {
+          setAccessChecked(true);
+        }
       }
     };
-    checkIpAccess();
+
+    void checkAccess();
+
+    return () => {
+      cancelled = true;
+    };
   }, [user, router]);
 
-  if (!isReady || !user) {
+  if (!isReady || !user || !accessChecked) {
     return (
       <div className="flex min-h-dvh items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-5">
@@ -168,6 +216,8 @@ export default function DashboardLayout({
         <WrongOfficeModal
           assignedOffice={wrongOffice.assigned}
           detectedOffice={wrongOffice.detected}
+          message={wrongOffice.message}
+          reason={wrongOffice.reason}
         />
       )}
     </div>

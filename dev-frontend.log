@@ -1,0 +1,66 @@
+
+> attendance-system@0.1.0 dev
+> next dev
+
+▲ Next.js 16.2.9 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.0.102:3000
+- Environments: .env.local
+✓ Ready in 942ms
+Warning: Custom Cache-Control headers detected for the following routes:
+  - /_next/static/(.*)
+
+Setting a custom Cache-Control header can break Next.js development behavior.
+Creating turbopack project {
+  dir: 'D:\\Out of the Box\\Attandence System\\frontend',
+  testMode: true
+}
+- Experiments (use with caution):
+  · optimizePackageImports
+
+ GET /login 200 in 2.6s (next.js: 818ms, application-code: 1785ms)
+ GET /login 200 in 122ms (next.js: 19ms, application-code: 103ms)
+ GET /login 200 in 189ms (next.js: 11ms, application-code: 178ms)
+ GET /login 200 in 205ms (next.js: 19ms, application-code: 186ms)
+ GET /employee 200 in 392ms (next.js: 245ms, application-code: 147ms)
+ GET /unauthorized-ip 200 in 300ms (next.js: 212ms, application-code: 87ms)
+ GET /login 200 in 183ms (next.js: 14ms, application-code: 170ms)
+○ Compiling /manager ...
+ GET /manager 200 in 3.9s (next.js: 3.8s, application-code: 110ms)
+ GET /unauthorized-ip 200 in 158ms (next.js: 23ms, application-code: 135ms)
+ GET /login 200 in 192ms (next.js: 16ms, application-code: 177ms)
+ GET /admin 200 in 162ms (next.js: 70ms, application-code: 92ms)
+ GET /admin/employees 200 in 143ms (next.js: 88ms, application-code: 56ms)
+ GET /admin/offices 200 in 180ms (next.js: 117ms, application-code: 63ms)
+ GET /admin/reports 200 in 169ms (next.js: 100ms, application-code: 68ms)
+[browser] The width(-1) and height(-1) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width. (file://D:/Out of the Box/Attandence System/frontend/.next/dev/static/chunks/node_modules_next_dist_1ybzpk2._.js:2477:13)
+[browser] The width(-1) and height(-1) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width. (file://D:/Out of the Box/Attandence System/frontend/.next/dev/static/chunks/node_modules_next_dist_1ybzpk2._.js:2477:13)
+ GET /admin/settings 200 in 262ms (next.js: 174ms, application-code: 88ms)
+ GET /admin/office-stats 200 in 121ms (next.js: 70ms, application-code: 50ms)
+ GET /admin/reports 200 in 71ms (next.js: 22ms, application-code: 49ms)
+[browser] The width(-1) and height(-1) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width. (file://D:/Out of the Box/Attandence System/frontend/.next/dev/static/chunks/node_modules_next_dist_1ybzpk2._.js:2477:13)
+[browser] The width(-1) and height(-1) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width. (file://D:/Out of the Box/Attandence System/frontend/.next/dev/static/chunks/node_modules_next_dist_1ybzpk2._.js:2477:13)
+ GET /admin/employees 200 in 57ms (next.js: 10ms, application-code: 48ms)
+ GET /admin 200 in 49ms (next.js: 10ms, application-code: 39ms)
+ GET /admin 200 in 429ms (next.js: 19ms, application-code: 410ms)
+✓ Compiled in 397ms
+ GET /admin 200 in 147ms (next.js: 23ms, application-code: 124ms)
+ GET /admin 200 in 1642ms (next.js: 569ms, application-code: 1073ms)
+ GET /admin 200 in 245ms (next.js: 19ms, application-code: 227ms)
+✓ Compiled in 80ms
+ GET /admin 200 in 169ms (next.js: 101ms, application-code: 67ms)
+ GET /admin/employees 200 in 95ms (next.js: 45ms, application-code: 50ms)
+ GET /admin 200 in 63ms (next.js: 11ms, application-code: 52ms)
+ GET /admin/employees 200 in 62ms (next.js: 15ms, application-code: 47ms)
